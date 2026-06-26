@@ -1,6 +1,6 @@
 {
   "name": "blokd",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Blokd: tiny production-oriented Hono-native meta-framework with Solid-familiar signals, Web APIs, SSR, routing, and resumable islands.",
   "type": "module",
   "license": "MIT",

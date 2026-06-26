@@ -56,6 +56,14 @@ export type BlokdViteDevServer = {
 export type BlokdPluginOptions = {
   routesDir?: string;
   extensions?: string[];
+  /**
+   * Browser client entry emitted by createPages when a matched route needs client behavior.
+   * This is not injected by the Vite plugin directly; app server code should pass the same
+   * value to createPages({ entryClient }).
+   *
+   * Default: "/src/entry-client.ts"
+   */
+  clientEntry?: string;
   /** Throw when two files map to the same URL path. Enabled by default. */
   strictRoutes?: boolean;
   /** Infer whether a route needs the client entry. Enabled by default. */
