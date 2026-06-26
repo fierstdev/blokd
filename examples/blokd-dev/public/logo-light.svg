@@ -1,0 +1,4 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Blokd">
+  <text x="10" y="42" fill="#0d0d0d" font-family="Hanken Grotesk, Arial, sans-serif" font-weight="600" font-size="40">blokd<tspan fill="#d4ff00">.</tspan></text>
+  <rect x="12" y="50" width="105" height="2" fill="#d4ff00" />
+</svg>

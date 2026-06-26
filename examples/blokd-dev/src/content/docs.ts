@@ -34,13 +34,13 @@ export const docs: DocPage[] = [
   {
     slug: 'getting-started',
     title: 'Getting Started',
-    summary: 'Create a Hono-native Blokd app with SSR routes, native forms, and optional islands.',
+    summary: 'Create a Blokd app on Web Platform primitives with SSR routes, native forms, Hono, and optional islands.',
     category: 'Start',
     sections: [
       {
         heading: 'Install',
         body: [
-          'Blokd is published as a small package with Hono as the HTTP layer. Vite handles JSX transform, route discovery, and client/Worker builds.',
+          'Blokd is named for the browser and Web API building blocks it uses directly. It is published as a small package with Hono as the HTTP layer, while Vite handles JSX transform, route discovery, and client/Worker builds.',
           'The beta is designed for TypeScript-first apps, but route modules stay close to standard Web APIs: Request, Response, FormData, URL, Headers, and fetch.'
         ],
         examples: [
@@ -277,7 +277,7 @@ export const docs: DocPage[] = [
         examples: [
           {
             filename: 'src/routes/_layout.tsx',
-            code: "export const meta = () => ({\n  htmlAttrs: { lang: 'en', 'data-theme': 'corporate' },\n  links: [{ rel: 'stylesheet', href: '/assets/client.css' }]\n});\n\nexport default function Layout(props) {\n  return (\n    <>\n      <header><a href=\"/\">Blokd</a></header>\n      <main>{props.children}</main>\n    </>\n  );\n}"
+            code: "export const meta = () => ({\n  htmlAttrs: { lang: 'en' },\n  links: [{ rel: 'stylesheet', href: '/assets/client.css' }]\n});\n\nexport default function Layout(props) {\n  return (\n    <>\n      <header><a href=\"/\">Blokd</a></header>\n      <main>{props.children}</main>\n    </>\n  );\n}"
           }
         ]
       },

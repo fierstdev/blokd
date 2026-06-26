@@ -1,95 +1,38 @@
 import { For } from 'blokd';
-import { docs, docsByCategory } from '../content/docs';
-import { site } from '../components/SiteShell';
+import { docsByCategory } from '../content/docs';
+import { site, Wordmark } from '../components/SiteShell';
 
-const pillars = [
+const principles = [
   {
-    tone: 'feature-panel-secondary',
-    title: 'Server-first',
-    body: 'Render pages through Hono and Web APIs before deciding whether the browser needs framework code.'
+    title: 'HTML first',
+    body: 'Routes render documents that work before enhancement. Links, forms, redirects, metadata, and errors stay normal browser behavior.'
   },
   {
-    tone: 'feature-panel-accent',
-    title: 'HTML-first',
-    body: 'Links, forms, loaders, metadata, and error boundaries work as documents before enhancement.'
+    title: 'Web APIs underneath',
+    body: 'Blokd is built from the platform blocks already in the runtime: Request, Response, FormData, DOM events, URLs, headers, and streams.'
   },
   {
-    tone: 'feature-panel-warning',
-    title: 'Event-resumable',
-    body: 'Small islands resume specific handlers on demand instead of hydrating an entire application shell.'
+    title: 'Hono where it fits',
+    body: 'Server routing stays a normal Hono app, so middleware, context variables, API routes, and deployment adapters remain visible.'
   }
 ] as const;
 
-const capabilities = [
-  {
-    tag: 'Server',
-    title: 'Hono-native routing',
-    body: 'Mount pages into a normal Hono app and keep Request, Response, FormData, and middleware visible.'
-  },
-  {
-    tag: 'Runtime',
-    title: 'HTML-first by default',
-    body: 'Static routes ship document HTML and CSS. Client JavaScript is opt-in through islands and route analysis.'
-  },
-  {
-    tag: 'Forms',
-    title: 'Native actions',
-    body: 'Post FormData back to the route that rendered it, then return redirects, validation state, or normal HTML.'
-  },
-  {
-    tag: 'UI',
-    title: 'Scoped islands',
-    body: 'Attach resumable handlers where interaction belongs without turning every page into a hydrated app.'
-  },
-  {
-    tag: 'Build',
-    title: 'File routes and metadata',
-    body: 'Let Vite discover routes, loaders, layouts, headers, and metadata while keeping pages plain JSX modules.'
-  },
-  {
-    tag: 'Edge',
-    title: 'Worker-ready output',
-    body: 'Build a single Worker SSR entry plus static assets that Wrangler can validate before deployment.'
-  }
+const refusals = [
+  'No React runtime',
+  'No VDOM',
+  'No synthetic event system',
+  'No custom server abstraction',
+  'No custom form abstraction'
 ] as const;
 
-const workflow = [
-  {
-    label: 'Author',
-    body: 'Write JSX routes, loaders, actions, and metadata in files that map to URLs.'
-  },
-  {
-    label: 'Analyze',
-    body: 'Blokd marks only routes with islands or resumable handlers for client assets.'
-  },
-  {
-    label: 'Ship',
-    body: 'Vite emits CSS, optional client chunks, and a Hono Worker entry for Cloudflare.'
-  }
+const commands = [
+  'pnpm create blokd@beta my-app',
+  'cd my-app',
+  'pnpm dev'
 ] as const;
-
-const releaseSignals = [
-  {
-    value: '0 KB',
-    label: 'client JS on static docs',
-    tone: 'text-primary'
-  },
-  {
-    value: 'Hono',
-    label: 'server contract',
-    tone: 'text-secondary'
-  },
-  {
-    value: 'Workers',
-    label: 'first deployment target',
-    tone: 'text-accent'
-  }
-] as const;
-
-const docsPreview = docs.slice(0, 4);
 
 export const meta = () => ({
-  title: 'Blokd - Hono-native HTML-first framework',
+  title: 'Blokd - A thin ergonomic layer over the Web Platform',
   description: site.description
 });
 
@@ -97,85 +40,73 @@ export default function HomePage() {
   const docGroups = docsByCategory();
   return (
     <>
-      <section class="hero-lattice overflow-hidden">
-        <div class="mx-auto grid max-w-7xl min-w-0 gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-28">
-          <div class="min-w-0 max-w-3xl self-center">
-            <div class="mb-5 flex flex-wrap gap-2">
-              <span class="badge badge-primary">0.1.0-beta.0</span>
-              <span class="badge badge-secondary badge-outline">Cloudflare-ready</span>
-              <span class="badge badge-accent badge-outline">Hono-native</span>
-            </div>
-            <p class="section-kicker">HTML-first framework</p>
-            <h1 class="mt-4 text-7xl font-black leading-none tracking-normal text-base-content sm:text-8xl">Blokd</h1>
-            <p class="mt-6 max-w-2xl text-xl leading-9 text-base-content/75">
-              A Hono-native framework for server-rendered apps that should ship HTML first, native forms first, and client JavaScript only where interaction proves it belongs.
-            </p>
-            <div class="mt-8 flex flex-wrap gap-3">
-              <a class="btn btn-primary" href="/docs/getting-started">Start building</a>
-              <a class="btn btn-outline" href="/docs">Read docs</a>
-              <a class="btn btn-ghost" href="/deploy">Deploy guide</a>
-            </div>
-            <div class="mt-6">
-              <div class="command-pill">
-                <span class="rounded bg-neutral px-2 py-1 text-neutral-content">$</span>
-                <code class="truncate">pnpm add blokd hono</code>
+      <section class="hero-lattice">
+        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+          <div class="block-panel block-panel-strong grid overflow-hidden lg:grid-cols-[1fr_0.92fr]">
+            <div class="border-b border-base-300 p-6 sm:p-8 lg:border-b-0 lg:border-r lg:p-10">
+              <div class="flex flex-wrap items-center gap-3">
+                <Wordmark />
+                <span class="badge badge-primary">0.1.0-beta.0</span>
+                <span class="badge badge-outline">Cloudflare-ready</span>
               </div>
-            </div>
-            <div class="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
-              <For each={releaseSignals}>
-                {item => (
-                  <div class="metric-tile p-4">
-                    <div class={`text-2xl font-black ${item.tone}`}>{item.value}</div>
-                    <div class="mt-1 text-sm leading-5 text-base-content/60">{item.label}</div>
-                  </div>
-                )}
-              </For>
-            </div>
-          </div>
-
-          <div class="product-stage overflow-hidden p-3 sm:p-5">
-            <div class="mockup-browser overflow-hidden border border-base-300 bg-base-200 shadow-sm">
-              <div class="mockup-browser-toolbar">
-                <div class="input input-sm border border-base-300 bg-base-100">blokd.dev/docs/getting-started</div>
+              <p class="section-kicker mt-10">Web Platform building blocks</p>
+              <h1 class="mt-4 max-w-3xl text-5xl font-black leading-none text-base-content sm:text-6xl lg:text-7xl">
+                A thin ergonomic layer over the Web Platform.
+              </h1>
+              <p class="muted-copy mt-6 max-w-2xl text-lg leading-8">
+                Blokd is named for the browser and Web API building blocks it stands on. It gives Hono apps JSX SSR, file routes, loaders, native form actions, metadata, and resumable islands only where interaction belongs.
+              </p>
+              <div class="mt-8 flex flex-wrap gap-3">
+                <a class="btn btn-primary" href="/docs/getting-started">Get started</a>
+                <a class="btn btn-outline" href="/docs">Read docs</a>
+                <a class="btn btn-ghost" href="/deploy">Deploy on Workers</a>
               </div>
-              <div class="bg-base-100 p-4">
-                <div class="grid gap-4 lg:grid-cols-[1fr_13rem]">
-                  <div class="code-surface p-3">
-                    <div class="mockup-code bg-neutral text-sm text-neutral-content">
-                      <pre data-prefix="$"><code>pnpm add blokd hono</code></pre>
-                      <pre data-prefix="1"><code>{'app.route("/", createPages({ routes }))'}</code></pre>
-                      <pre data-prefix="2"><code>{'export const action = async ctx => {'}</code></pre>
-                      <pre data-prefix="3"><code>{'  const form = await ctx.request.formData()'}</code></pre>
-                      <pre data-prefix="4"><code>{'  return { ok: form.has("email") }'}</code></pre>
-                      <pre data-prefix="5"><code>{'}'}</code></pre>
-                    </div>
-                  </div>
-                  <div class="grid gap-3">
-                    <div class="metric-tile p-4">
-                      <div class="text-xs font-bold uppercase tracking-normal text-base-content/50">Route</div>
-                      <div class="mt-2 text-lg font-black">SSR</div>
-                      <div class="mt-1 text-sm text-base-content/60">HTML plus CSS</div>
-                    </div>
-                    <div class="metric-tile p-4">
-                      <div class="text-xs font-bold uppercase tracking-normal text-base-content/50">Scoped UI</div>
-                      <div class="mt-2 text-lg font-black text-accent">Opt-in</div>
-                      <div class="mt-1 text-sm text-base-content/60">Client chunk only when used</div>
-                    </div>
-                  </div>
+              <div class="mt-8">
+                <div class="command-pill">
+                  <span class="command-prompt">$</span>
+                  <code class="truncate">pnpm add blokd hono</code>
                 </div>
-                <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div class="rounded-box border border-base-300 bg-base-200 p-3">
-                    <div class="text-xs text-base-content/50">Framework</div>
-                    <div class="mt-1 font-bold">JSX SSR</div>
-                  </div>
-                  <div class="rounded-box border border-base-300 bg-base-200 p-3">
-                    <div class="text-xs text-base-content/50">Forms</div>
-                    <div class="mt-1 font-bold">Web APIs</div>
-                  </div>
-                  <div class="rounded-box border border-base-300 bg-base-200 p-3">
-                    <div class="text-xs text-base-content/50">Deploy</div>
-                    <div class="mt-1 font-bold">Worker</div>
-                  </div>
+              </div>
+            </div>
+
+            <div class="bg-neutral p-4 sm:p-6 lg:p-8">
+              <div class="code-surface">
+                <div class="code-titlebar flex items-center justify-between gap-3 px-4 py-3 text-xs">
+                  <span>src/routes/reservations.tsx</span>
+                  <span>server route</span>
+                </div>
+                <div class="mockup-code text-sm">
+                  <pre data-prefix="1"><code>{'export const loader = async ctx => {'}</code></pre>
+                  <pre data-prefix="2"><code>{'  const rooms = await ctx.var.db.rooms.list()'}</code></pre>
+                  <pre data-prefix="3"><code>{'  return { rooms }'}</code></pre>
+                  <pre data-prefix="4"><code>{'}'}</code></pre>
+                  <pre data-prefix="5"><code>{''}</code></pre>
+                  <pre data-prefix="6"><code>{'export const action = async ctx => {'}</code></pre>
+                  <pre data-prefix="7"><code>{'  const form = await ctx.req.formData()'}</code></pre>
+                  <pre data-prefix="8"><code>{'  await ctx.var.db.rooms.reserve(form)'}</code></pre>
+                  <pre data-prefix="9"><code>{'  return ctx.redirect("/reservations")'}</code></pre>
+                  <pre data-prefix="10"><code>{'}'}</code></pre>
+                  <pre data-prefix="11"><code>{''}</code></pre>
+                  <pre data-prefix="12"><code>{'export default function Reservations({ data }) {'}</code></pre>
+                  <pre data-prefix="13"><code>{'  return <form method="post">...</form>'}</code></pre>
+                  <pre data-prefix="14"><code>{'}'}</code></pre>
+                </div>
+              </div>
+              <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <div class="metric-tile p-4">
+                  <p class="label-caps">Static docs</p>
+                  <p class="mt-2 text-2xl font-black text-primary">0 KB</p>
+                  <p class="dim-copy mt-1 text-sm">client script</p>
+                </div>
+                <div class="metric-tile p-4">
+                  <p class="label-caps">Server</p>
+                  <p class="mt-2 text-2xl font-black">Hono</p>
+                  <p class="dim-copy mt-1 text-sm">native context</p>
+                </div>
+                <div class="metric-tile p-4">
+                  <p class="label-caps">Deploy</p>
+                  <p class="mt-2 text-2xl font-black">Workers</p>
+                  <p class="dim-copy mt-1 text-sm">dry-run ready</p>
                 </div>
               </div>
             </div>
@@ -187,19 +118,19 @@ export default function HomePage() {
         <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div class="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
-              <p class="section-kicker">What is Blokd?</p>
-              <h2 class="mt-3 max-w-2xl text-5xl font-black leading-tight tracking-normal">A small framework surface for Hono apps.</h2>
+              <p class="section-kicker">Runtime discipline</p>
+              <h2 class="mt-3 max-w-3xl text-4xl font-black leading-tight sm:text-5xl">Most apps do not need a large client runtime.</h2>
             </div>
-            <p class="max-w-2xl text-lg leading-8 text-base-content/70">
-              Blokd is for teams that like the Web Platform but still want framework-level routing, SSR, metadata, native actions, layouts, and opt-in islands.
+            <p class="muted-copy max-w-2xl text-lg leading-8">
+              Blokd starts with the browser as the runtime, documents as the default output, server data as plain request work, and form posts as native Web APIs. JavaScript becomes a route-level consequence of specific interactive code rather than a tax every page pays.
             </p>
           </div>
           <div class="mt-10 grid gap-4 md:grid-cols-3">
-            <For each={pillars}>
+            <For each={principles}>
               {item => (
-                <article class={`feature-panel ${item.tone} p-6`}>
-                  <h3 class="text-2xl font-black tracking-normal">{item.title}</h3>
-                  <p class="mt-4 leading-7 text-base-content/70">{item.body}</p>
+                <article class="feature-panel p-6">
+                  <h3 class="text-2xl font-black">{item.title}</h3>
+                  <p class="muted-copy mt-4 leading-7">{item.body}</p>
                 </article>
               )}
             </For>
@@ -207,108 +138,77 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div class="mb-9 max-w-3xl">
-          <p class="section-kicker">Framework primitives</p>
-          <h2 class="mt-3 text-4xl font-black tracking-normal">Everything the beta is built to do well.</h2>
-          <p class="mt-4 text-base leading-7 text-base-content/70">
-            The public beta should feel complete for SSR pages, native forms, docs sites, local-service sites, and focused islands without claiming to be a full-stack platform.
+      <section class="mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:px-8">
+        <div class="block-panel p-6 sm:p-8">
+          <p class="section-kicker">Blocks, not replacements</p>
+          <h2 class="mt-3 max-w-2xl text-4xl font-black leading-tight">Small because it builds directly on the platform.</h2>
+          <p class="muted-copy mt-4 max-w-2xl leading-7">
+            Blokd is intentionally narrow. It gives you framework conventions for pages, data, actions, metadata, and enhancement while keeping the browser, Web APIs, and Hono primitives recognizable.
+          </p>
+          <div class="mt-8 grid gap-3 sm:grid-cols-2">
+            <For each={refusals}>
+              {item => (
+                <div class="flex items-center gap-3 border border-base-300 bg-base-100 p-3">
+                  <span class="h-2.5 w-2.5 bg-primary" aria-hidden="true"></span>
+                  <span class="font-semibold">{item}</span>
+                </div>
+              )}
+            </For>
+          </div>
+          <p class="mt-8 border-l-2 border-primary pl-4 text-xl font-black">
+            DOM is DOM. Forms are forms. Requests are Requests. Hono is Hono.
           </p>
         </div>
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <For each={capabilities}>
-            {item => (
-              <article class="card card-border bg-base-100 shadow-sm transition-transform hover:-translate-y-0.5">
-                <div class="card-body gap-4">
-                  <span class="badge badge-outline w-fit">{item.tag}</span>
-                  <div>
-                    <h3 class="card-title text-xl">{item.title}</h3>
-                    <p class="mt-2 leading-7 text-base-content/70">{item.body}</p>
-                  </div>
-                </div>
-              </article>
-            )}
-          </For>
-        </div>
-      </section>
 
-      <section class="bg-neutral text-neutral-content">
-        <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-          <div>
-            <p class="section-kicker text-secondary-content/80">Release path</p>
-            <h2 class="mt-3 text-4xl font-black tracking-normal">Built around a clear Worker deploy.</h2>
-            <p class="mt-4 max-w-xl leading-7 text-neutral-content/70">
-              This site is also the example app: Tailwind and daisyUI compile into static assets, the SSR entry runs on Hono, and Wrangler validates the Worker before deployment.
-            </p>
-            <div class="mt-8 flex flex-wrap gap-3">
-              <a class="btn btn-secondary" href="/deploy">Cloudflare guide</a>
-              <a class="btn btn-outline border-neutral-content/30 text-neutral-content hover:bg-neutral-content hover:text-neutral" href="/docs/beta-checklist">Beta checklist</a>
-            </div>
-          </div>
-          <div>
-            <ul class="steps steps-vertical w-full lg:steps-horizontal">
-              <For each={workflow}>
-                {step => (
-                  <li class="step step-secondary">
-                    <span class="block text-left">
-                      <span class="block font-bold">{step.label}</span>
-                      <span class="mt-1 block max-w-xs text-sm leading-6 text-neutral-content/60">{step.body}</span>
-                    </span>
-                  </li>
-                )}
+        <div class="block-panel block-panel-strong p-6 sm:p-8">
+          <p class="section-kicker">Five minute start</p>
+          <h2 class="mt-3 text-4xl font-black leading-tight">Build a Blokd app in five minutes.</h2>
+          <p class="muted-copy mt-4 leading-7">
+            Create a project, keep routes as JSX modules, and deploy the same Hono app to Cloudflare Workers when the beta target is ready.
+          </p>
+          <div class="mt-7 code-surface">
+            <div class="mockup-code text-sm">
+              <For each={commands}>
+                {command => <pre data-prefix="$"><code>{command}</code></pre>}
               </For>
-            </ul>
-            <div class="mt-8 code-surface p-3">
-              <div class="mockup-code bg-neutral text-neutral-content">
-                <pre data-prefix="$"><code>pnpm build:site</code></pre>
-                <pre data-prefix="$"><code>pnpm smoke:site</code></pre>
-                <pre data-prefix="$"><code>pnpm --filter blokd-dev-site deploy:dry-run</code></pre>
-              </div>
             </div>
+          </div>
+          <div class="mt-7 flex flex-wrap gap-3">
+            <a class="btn btn-primary" href="/docs/getting-started">Start tutorial</a>
+            <a class="btn btn-outline" href="/docs/cloudflare-workers">Worker deploy</a>
           </div>
         </div>
       </section>
 
-      <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div class="max-w-2xl">
-            <p class="section-kicker">Documentation</p>
-            <h2 class="mt-3 text-4xl font-black tracking-normal">Reference docs, built with the framework.</h2>
-            <p class="mt-4 leading-7 text-base-content/70">The public documentation is the canonical Blokd example: SSR pages, Tailwind and daisyUI styling, static docs with no client script, and a Cloudflare Worker deployment path.</p>
+      <section class="section-band">
+        <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div class="max-w-2xl">
+              <p class="section-kicker">Documentation</p>
+              <h2 class="mt-3 text-4xl font-black leading-tight">The official docs are the example app.</h2>
+              <p class="muted-copy mt-4 leading-7">
+                This website runs as a Blokd site with Tailwind, daisyUI, static docs, SSR routes, and a Cloudflare Workers deployment path.
+              </p>
+            </div>
+            <a class="btn btn-outline" href="/docs">All docs</a>
           </div>
-          <a class="btn btn-outline" href="/docs">All docs</a>
-        </div>
-        <div class="grid gap-4 lg:grid-cols-3">
-          <For each={docGroups}>
-            {group => (
-              <a class="docs-tile p-5 transition-transform hover:-translate-y-0.5" href="/docs">
-                <div class="flex items-center justify-between gap-3">
-                  <h3 class="text-xl font-black tracking-normal">{group.category}</h3>
-                  <span class="badge badge-primary badge-outline">{group.docs.length}</span>
-                </div>
-                <div class="mt-5 grid gap-2">
-                  <For each={group.docs.slice(0, 3)}>
-                    {doc => <span class="text-sm font-semibold text-base-content/70">{doc.title}</span>}
-                  </For>
-                </div>
-              </a>
-            )}
-          </For>
-        </div>
-        <div class="mt-8 grid gap-4 md:grid-cols-2">
-          <For each={docsPreview}>
-            {doc => (
-              <a class="doc-card card card-border bg-base-100 shadow-sm transition-colors hover:bg-base-200" href={`/docs/${doc.slug}`}>
-                <div class="card-body">
+          <div class="grid gap-4 lg:grid-cols-3">
+            <For each={docGroups}>
+              {group => (
+                <a class="docs-tile block-hover block p-5" href="/docs">
                   <div class="flex items-center justify-between gap-3">
-                    <h3 class="card-title text-lg">{doc.title}</h3>
-                    <span class="badge badge-ghost">{doc.category}</span>
+                    <h3 class="text-xl font-black">{group.category}</h3>
+                    <span class="badge badge-primary badge-outline">{group.docs.length}</span>
                   </div>
-                  <p class="leading-7 text-base-content/70">{doc.summary}</p>
-                </div>
-              </a>
-            )}
-          </For>
+                  <div class="mt-5 grid gap-2">
+                    <For each={group.docs.slice(0, 3)}>
+                      {doc => <span class="text-sm font-semibold text-base-content/70">{doc.title}</span>}
+                    </For>
+                  </div>
+                </a>
+              )}
+            </For>
+          </div>
         </div>
       </section>
     </>
