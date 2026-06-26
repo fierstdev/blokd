@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Build outputs
+dist/
+build/
+out/
+.output/
+.vercel/
+.netlify/
+.wrangler/
+.turbo/
+.cache/
+.vite/
+*.tsbuildinfo
+
+# Package artifacts
+*.tgz
+*.tar.gz
+*.zip
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test outputs
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.nyc_output/
+
+# Local env files
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Logs
+logs/
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Example app outputs
+examples/**/dist/
+examples/**/build/
+examples/**/.vite/
+examples/**/.wrangler/
+
+# Framework generated files
+packages/**/dist/
+packages/**/*.tsbuildinfo
+
+# Keep package manager metadata
+!pnpm-lock.yaml
+!.npmrc

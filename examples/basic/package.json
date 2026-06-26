@@ -1,0 +1,20 @@
+{
+  "name": "blokd-restaurant",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build --config vite.client.config.ts && vite build --config vite.config.ts",
+    "start": "node dist/server/entry-server.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.6",
+    "blokd": "workspace:*",
+    "hono": "^4.12.27"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0"
+  },
+  "description": "Restaurant website example built with Blokd, Hono, SSR, native forms, and resumable islands."
+}

@@ -1,0 +1,25 @@
+{
+  "name": "blokd-dev-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --config vite.client.config.ts && vite build --config vite.config.ts",
+    "preview": "pnpm build && wrangler dev --local",
+    "deploy:dry-run": "pnpm build && wrangler deploy --dry-run",
+    "deploy": "pnpm build && wrangler deploy"
+  },
+  "dependencies": {
+    "blokd": "workspace:*",
+    "hono": "^4.12.27"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": ">=4 <5",
+    "@tailwindcss/vite": ">=4 <5",
+    "daisyui": ">=5 <6",
+    "tailwindcss": ">=4 <5",
+    "typescript": ">=5.5 <7",
+    "vite": ">=6 <9",
+    "wrangler": ">=4.20 <5"
+  },
+  "description": "Public blokd.dev website and documentation example for Cloudflare Workers."
+}

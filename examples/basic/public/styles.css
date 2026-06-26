@@ -1,0 +1,32 @@
+:root { color-scheme: light; font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif; line-height: 1.5; color: #1e1b18; background: #f8f4ef; }
+body { margin: 0; }
+a { color: inherit; }
+.site-header, .site-footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem clamp(1rem, 4vw, 4rem); }
+.site-header { border-bottom: 1px solid #ded4c7; }
+.site-footer { border-top: 1px solid #ded4c7; }
+.brand { font-weight: 700; text-decoration: none; }
+nav { display: flex; gap: 1rem; }
+.hero { padding: clamp(4rem, 12vw, 10rem) clamp(1rem, 4vw, 4rem); max-width: 900px; }
+.hero h1 { font-size: clamp(3rem, 8vw, 7rem); line-height: .95; margin: 0 0 1.5rem; }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; }
+.button, button { display: inline-block; border: 1px solid #1e1b18; background: #1e1b18; color: #fff; padding: .75rem 1rem; text-decoration: none; cursor: pointer; }
+.button.secondary { background: transparent; color: #1e1b18; }
+.hero-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.feature-grid, .contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #ded4c7; margin: 0 clamp(1rem, 4vw, 4rem) 4rem; }
+.feature-grid article, .contact-grid section { background: #f8f4ef; padding: 2rem; }
+.page { padding: 3rem clamp(1rem, 4vw, 4rem); }
+.narrow { max-width: 720px; }
+.menu-section { margin-block: 3rem; }
+.menu-section ul { list-style: none; padding: 0; }
+.menu-item { display: flex; justify-content: space-between; gap: 2rem; padding-block: 1rem; border-bottom: 1px solid #ded4c7; }
+.menu-item h3 { margin: 0; }
+.menu-item p { margin: .25rem 0 0; }
+.form { display: grid; gap: 1rem; }
+.form label { display: grid; gap: .35rem; }
+input, textarea { font: inherit; padding: .7rem; border: 1px solid #b9aa99; background: #fff; }
+textarea { min-height: 8rem; }
+.hours { display: grid; grid-template-columns: max-content 1fr; gap: .5rem 1.5rem; }
+.hours dt { font-weight: 700; }
+.estimator { border: 1px solid #ded4c7; padding: 1.5rem; background: #fffaf4; }
+.estimator label { display: grid; gap: .5rem; }
+@media (max-width: 760px) { .site-header, .site-footer { display: block; } nav { margin-top: 1rem; } .feature-grid, .contact-grid { grid-template-columns: 1fr; } }
