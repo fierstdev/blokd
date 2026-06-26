@@ -1,7 +1,57 @@
 import { transformAsync, type PluginObj } from '@babel/core';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
-import type { Plugin, ViteDevServer } from 'vite';
+
+export type BlokdVitePlugin = {
+  name: string;
+  enforce?: 'pre' | 'post';
+  configResolved?: (config: any) => void | Promise<void>;
+  configureServer?: (server: BlokdViteDevServer) => void | Promise<void>;
+  resolveId?: (
+    id: string,
+    importer?: string,
+    options?: any
+  ) => string | null | undefined | Promise<string | null | undefined>;
+  load?: (
+    id: string,
+    options?: any
+  ) => string | null | undefined | Promise<string | null | undefined>;
+  transform?: (
+    code: string,
+    id: string,
+    options?: any
+  ) =>
+    | string
+    | null
+    | undefined
+    | {
+        code: string;
+        map?: any;
+      }
+    | Promise<
+        | string
+        | null
+        | undefined
+        | {
+            code: string;
+            map?: any;
+          }
+      >;
+};
+
+export type BlokdViteDevServer = {
+  moduleGraph: {
+    getModuleById(id: string): any;
+    invalidateModule(mod: any): void;
+  };
+  watcher: {
+    add(path: string): void;
+    on(event: 'add' | 'unlink', listener: (file: string) => void): void;
+  };
+  ws: {
+    send(payload: { type: string; [key: string]: unknown }): void;
+  };
+};
 
 export type BlokdPluginOptions = {
   routesDir?: string;
@@ -362,12 +412,12 @@ function normalizeJsxText(text: string): string {
   return normalized;
 }
 
-export function blokd(options: BlokdPluginOptions = {}): Plugin {
+export function blokd(options: BlokdPluginOptions = {}): BlokdVitePlugin {
   let root = process.cwd();
   let routesDir = resolve(root, options.routesDir ?? 'src/routes');
   const extensions = options.extensions ?? ['.tsx', '.jsx', '.ts', '.js'];
 
-  function invalidateRoutes(server: ViteDevServer): void {
+  function invalidateRoutes(server: BlokdViteDevServer): void {
     const mod = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_ROUTES);
     if (mod) server.moduleGraph.invalidateModule(mod);
     server.ws.send({ type: 'full-reload' });
@@ -380,7 +430,7 @@ export function blokd(options: BlokdPluginOptions = {}): Plugin {
       root = config.root;
       routesDir = resolve(root, options.routesDir ?? 'src/routes');
     },
-    configureServer(server: ViteDevServer) {
+    configureServer(server: BlokdViteDevServer) {
       server.watcher.add(routesDir);
       server.watcher.on('add', (file: string) => { if (file.startsWith(routesDir)) invalidateRoutes(server); });
       server.watcher.on('unlink', (file: string) => { if (file.startsWith(routesDir)) invalidateRoutes(server); });
