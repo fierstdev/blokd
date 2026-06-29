@@ -502,11 +502,11 @@ export const docs: DocPage[] = [
       {
         heading: 'createPages options',
         body: [
-          'routes is required. entryClient is emitted only for routes that need client code. dataQueryParam changes the JSON data query key. onError lets you centralize non-document error responses.'
+          'routes is required. entryClient is emitted only for routes that need client code. dataQueryParam changes the JSON data query key. stream opts document responses into Web Streams. onError lets you centralize non-document error responses.'
         ],
         examples: [
           {
-            code: "app.route('/', createPages({\n  routes,\n  entryClient: '/assets/client.js',\n  dataQueryParam: '__data',\n  onError(error, ctx) {\n    console.error(ctx.get('requestId'), error);\n    return new Response('Internal Server Error', { status: 500 });\n  }\n}));"
+            code: "app.route('/', createPages({\n  routes,\n  entryClient: '/assets/client.js',\n  dataQueryParam: '__data',\n  stream: true,\n  onError(error, ctx) {\n    console.error(ctx.get('requestId'), error);\n    return new Response('Internal Server Error', { status: 500 });\n  }\n}));"
           }
         ]
       },
@@ -665,6 +665,24 @@ export const docs: DocPage[] = [
         ]
       },
       {
+        heading: 'CSP and resumability',
+        body: [
+          'The recommended production mode is registered refs: the HTML contains stable ids, but handlers are registered from the trusted client bundle before interaction.',
+          'That mode works with a strict same-origin module-script CSP and does not need unsafe-inline.'
+        ],
+        bullets: [
+          "Use script-src 'self' for the Blokd client entry and generated route-local island entries.",
+          'Keep object-src none, base-uri none, form-action self, and connect-src self unless your app needs more.',
+          'Only expose importable handler chunks when you intentionally want refs to dynamic-import public browser modules.',
+          'When using importable chunks, keep allowRef scoped to the exact public asset path shape.'
+        ],
+        examples: [
+          {
+            code: "default-src 'self';\nbase-uri 'none';\nobject-src 'none';\nframe-ancestors 'none';\nscript-src 'self';\nstyle-src 'self';\nimg-src 'self' data:;\nconnect-src 'self';\nform-action 'self';"
+          }
+        ]
+      },
+      {
         heading: 'Data serialization',
         body: [
           'Loader data and island state can be serialized to the browser. Do not put secrets, private tokens, raw session objects, or privileged service credentials in either place.'
@@ -682,15 +700,15 @@ export const docs: DocPage[] = [
       {
         heading: 'JSX runtime',
         body: [
-          'The beta uses a small JSX runtime IR. It does not yet emit compiler-optimized DOM templates.',
-          'This keeps the implementation small for beta, but it is not the final performance ceiling.'
+          'The Vite transform emits cached DOM templates for static intrinsic JSX.',
+          'Dynamic JSX, components, spreads, events, and refs still use the small runtime path. Broader compiler coverage remains future work.'
         ]
       },
       {
         heading: 'Hydration model',
         body: [
-          'hydrate() currently delegates to render-style behavior. The recommended beta model is HTML-first SSR plus resumable islands, not full-app hydration.',
-          'Use client code for focused islands and app-specific enhancements.'
+          'hydrate() claims existing SSR nodes and uses marker comments for dynamic regions.',
+          'It is intended for focused interactive roots. The recommended beta model remains HTML-first SSR plus resumable islands, not full-app hydration.'
         ]
       },
       {
@@ -704,7 +722,8 @@ export const docs: DocPage[] = [
         heading: 'Resumable refs',
         body: [
           'Refs such as /src/resumables/private-dining.ts#updateGuests are stable ids, not a promise that source files are served in production.',
-          'Register handlers from the client entry for beta production apps unless you intentionally expose importable handler chunks.'
+          'Register handlers from the client entry for beta production apps unless you intentionally expose importable handler chunks.',
+          'Registered refs are the CSP-friendly production path. Importable chunks should keep allowRef narrow and script-src limited to trusted origins.'
         ]
       }
     ]

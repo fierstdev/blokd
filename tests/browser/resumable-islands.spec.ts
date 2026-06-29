@@ -16,6 +16,9 @@ declare global {
     __resumeErrors?: string[];
     __resumeDisposeA?: () => void;
     __resumeDisposeB?: () => void;
+    __blokdHydrationTest?: {
+      hydrateCounter(root: Element): () => void;
+    };
   }
 }
 
@@ -307,5 +310,33 @@ test('compiler-assisted island resumes through generated route-local entry', asy
   await expect(page.locator('[data-counter-button]')).toHaveText(/Count:\s*1/);
   await page.locator('[data-counter-button]').click();
   await expect(page.locator('[data-counter-button]')).toHaveText(/Count:\s*2/);
+  expect(errors).toEqual([]);
+});
+
+test('hydrate claims SSR markers without replacing the existing element', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+
+  await page.goto('/menu');
+  await page.addScriptTag({ url: '/assets/hydration-test-controls.js', type: 'module' });
+  await page.setContent(`
+    <div id="root">
+      <button id="hydrated-counter" type="button">Count: <!--bd-->0<!--/bd--></button>
+    </div>
+  `);
+  await page.evaluate(() => {
+    const root = document.getElementById('root')!;
+    const before = document.getElementById('hydrated-counter');
+    window.__blokdHydrationTest!.hydrateCounter(root);
+    (window as any).__sameHydratedButton = before === document.getElementById('hydrated-counter');
+  });
+
+  expect(await page.evaluate(() => (window as any).__sameHydratedButton)).toBe(true);
+  await expect(page.locator('#hydrated-counter')).toHaveText(/Count:\s*0/);
+  await page.locator('#hydrated-counter').click();
+  await expect(page.locator('#hydrated-counter')).toHaveText(/Count:\s*1/);
   expect(errors).toEqual([]);
 });

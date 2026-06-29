@@ -693,7 +693,13 @@ function jsxTransformPlugin(api: any): PluginObj {
     visitor: {
       JSXElement(path: any, state: any) {
         state.used = true;
-        path.replaceWith(buildElement(path.node, t));
+        const templateHtml = staticTemplateHtml(path.node, t);
+        if (templateHtml !== null) {
+          state.usedTemplate = true;
+          path.replaceWith(t.callExpression(t.identifier('_bd_template'), [t.stringLiteral(templateHtml)]));
+        } else {
+          path.replaceWith(buildElement(path.node, t));
+        }
       },
       JSXFragment(path: any, state: any) {
         state.used = true;
@@ -706,7 +712,8 @@ function jsxTransformPlugin(api: any): PluginObj {
             t.importSpecifier(t.identifier('_bd_jsx'), t.identifier('jsx')),
             t.importSpecifier(t.identifier('_bd_jsxs'), t.identifier('jsxs')),
             t.importSpecifier(t.identifier('_bd_Fragment'), t.identifier('Fragment')),
-            t.importSpecifier(t.identifier('_bd_lazy'), t.identifier('lazy'))
+            t.importSpecifier(t.identifier('_bd_lazy'), t.identifier('lazy')),
+            ...(state.usedTemplate ? [t.importSpecifier(t.identifier('_bd_template'), t.identifier('template'))] : [])
           ], t.stringLiteral('blokd/jsx-runtime')));
         }
       }
@@ -714,10 +721,120 @@ function jsxTransformPlugin(api: any): PluginObj {
   };
 }
 
+function islandNameTransformPlugin(api: any): PluginObj {
+  const t = api.types;
+  return {
+    visitor: {
+      Program(path: any, state: any) {
+        const islandImports = new Set<string>();
+        for (const statement of path.get('body')) {
+          if (!statement.isImportDeclaration()) continue;
+          const source = statement.node.source.value;
+          if (source !== 'blokd' && source !== 'blokd/island') continue;
+          for (const specifier of statement.node.specifiers) {
+            if (!t.isImportSpecifier(specifier)) continue;
+            const imported = specifier.imported;
+            if ((t.isIdentifier(imported) && imported.name === 'island') || (t.isStringLiteral(imported) && imported.value === 'island')) {
+              islandImports.add(specifier.local.name);
+            }
+          }
+        }
+        state.blokdIslandImports = islandImports;
+      },
+      VariableDeclarator(path: any, state: any) {
+        const id = path.node.id;
+        if (!t.isIdentifier(id)) return;
+        if (!isExportedConstDeclarator(path)) return;
+        const call = path.node.init;
+        if (!t.isCallExpression(call)) return;
+        if (!t.isIdentifier(call.callee)) return;
+        if (!state.blokdIslandImports?.has(call.callee.name)) return;
+        addIslandNameOption(call, id.name, t);
+      }
+    }
+  };
+}
+
+function isExportedConstDeclarator(path: any): boolean {
+  const declaration = path.parentPath;
+  if (!declaration?.isVariableDeclaration?.({ kind: 'const' })) return false;
+  return declaration.parentPath?.isExportNamedDeclaration?.() === true;
+}
+
+function addIslandNameOption(call: any, name: string, t: any): void {
+  const options = call.arguments[1];
+  if (options === undefined) {
+    call.arguments.push(t.objectExpression([t.objectProperty(t.identifier('name'), t.stringLiteral(name))]));
+    return;
+  }
+  if (!t.isObjectExpression(options)) return;
+  const hasName = options.properties.some((property: any) => {
+    if (!t.isObjectProperty(property)) return false;
+    const key = property.key;
+    return (t.isIdentifier(key) && key.name === 'name') || (t.isStringLiteral(key) && key.value === 'name');
+  });
+  if (!hasName) options.properties.push(t.objectProperty(t.identifier('name'), t.stringLiteral(name)));
+}
+
 function buildElement(node: any, t: any): any {
   const children = buildChildren(node.children, t);
   const props = buildProps(node.openingElement.attributes, children, t);
   return t.callExpression(t.identifier('_bd_jsx'), [jsxNameToExpr(node.openingElement.name, t), props]);
+}
+
+function staticTemplateHtml(node: any, t: any): string | null {
+  if (!t.isJSXIdentifier(node.openingElement.name)) return null;
+  const tag = node.openingElement.name.name;
+  if (!/^[a-z][\w.-]*$/.test(tag)) return null;
+  let attrs = '';
+  for (const attr of node.openingElement.attributes) {
+    if (t.isJSXSpreadAttribute(attr)) return null;
+    const name = attrName(attr.name, t);
+    if (isEventOrRef(name) || name === 'innerHTML' || name === 'outerHTML') return null;
+    if (!attr.value) {
+      attrs += ` ${escapeTemplateHtml(name)}`;
+      continue;
+    }
+    if (t.isStringLiteral(attr.value)) {
+      attrs += ` ${escapeTemplateHtml(name)}="${escapeTemplateHtml(attr.value.value)}"`;
+      continue;
+    }
+    if (t.isJSXExpressionContainer(attr.value)) return null;
+    return null;
+  }
+  if (node.openingElement.selfClosing || voidTemplateElements.has(tag)) return `<${tag}${attrs}>`;
+  let children = '';
+  for (const child of node.children) {
+    if (t.isJSXText(child)) {
+      const text = normalizeJsxText(child.value);
+      if (text) children += escapeTemplateHtml(text);
+      continue;
+    }
+    if (t.isJSXElement(child)) {
+      const childHtml = staticTemplateHtml(child, t);
+      if (childHtml === null) return null;
+      children += childHtml;
+      continue;
+    }
+    if (t.isJSXFragment(child)) return null;
+    if (t.isJSXExpressionContainer(child)) {
+      if (t.isJSXEmptyExpression(child.expression)) continue;
+      return null;
+    }
+    return null;
+  }
+  return `<${tag}${attrs}>${children}</${tag}>`;
+}
+
+const voidTemplateElements = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+
+function escapeTemplateHtml(value: unknown): string {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function buildFragment(node: any, t: any): any {
@@ -889,7 +1006,7 @@ export function blokd(options: BlokdPluginOptions = {}): BlokdVitePlugin {
         code = `${code}\nimport ${JSON.stringify(VIRTUAL_ISLANDS)};\n`;
         injectedIslands = true;
       }
-      if (!/\.[cm]?[jt]sx$/.test(id) || !code.includes('<')) return injectedIslands ? { code, map: null } : null;
+      if (!/\.[cm]?[jt]sx$/.test(id) || (!code.includes('<') && !/\bisland\s*\(/.test(code))) return injectedIslands ? { code, map: null } : null;
       const result = await transformAsync(code, {
         filename: id,
         sourceMaps: true,
@@ -897,7 +1014,7 @@ export function blokd(options: BlokdPluginOptions = {}): BlokdVitePlugin {
         configFile: false,
         parserOpts: { sourceType: 'module', plugins: ['typescript', 'jsx', 'importMeta', 'topLevelAwait'] },
         generatorOpts: { jsescOption: { minimal: true } },
-        plugins: [jsxTransformPlugin]
+        plugins: [islandNameTransformPlugin, jsxTransformPlugin]
       });
       if (!result?.code) return null;
       return { code: result.code, map: result.map as any };

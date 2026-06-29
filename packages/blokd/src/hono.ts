@@ -5,7 +5,9 @@ import {
   json,
   mergeMeta,
   renderDocument,
+  renderDocumentToStream,
   renderToString,
+  type RenderDocumentOptions,
   type MetaDescriptor,
   type ResponseLike
 } from './server.js';
@@ -46,6 +48,11 @@ export type CreatePagesOptions<C extends Context = Context> = {
    */
   entryClient?: string;
   dataQueryParam?: string;
+  /**
+   * Stream document responses with a ReadableStream body. Data responses, redirects,
+   * and direct action Response values keep their native response behavior.
+   */
+  stream?: boolean;
   onError?: (error: unknown, ctx: C) => Response | Promise<Response>;
 };
 
@@ -159,7 +166,7 @@ async function renderActionResult<C extends Context>(
 
   for (const mod of modules) {
     if (mod.meta) metas.push(await mod.meta({ request: ctx.req.raw, params: match.params, ctx, data }));
-    if (mod.headers) appendHeaders(headers, new Headers(await mod.headers({ request: ctx.req.raw, params: match.params, ctx, data })));
+    if (mod.headers) appendHeadersInit(headers, await mod.headers({ request: ctx.req.raw, params: match.params, ctx, data }));
   }
 
   const loaded: LoadedRoute<C> = {
@@ -200,7 +207,7 @@ async function loadRoute<C extends Context>(match: Match<C>, ctx: C): Promise<Lo
 
   for (const mod of modules) {
     if (mod.meta) metas.push(await mod.meta({ request: ctx.req.raw, params: match.params, ctx, data }));
-    if (mod.headers) appendHeaders(headers, new Headers(await mod.headers({ request: ctx.req.raw, params: match.params, ctx, data })));
+    if (mod.headers) appendHeadersInit(headers, await mod.headers({ request: ctx.req.raw, params: match.params, ctx, data }));
   }
 
   return { match, modules, leaf, data, meta: mergeMeta(...metas), headers };
@@ -208,7 +215,7 @@ async function loadRoute<C extends Context>(match: Match<C>, ctx: C): Promise<Lo
 
 function renderDocumentForLoadedRoute<C extends Context>(loaded: LoadedRoute<C>, ctx: C, options: CreatePagesOptions<C>): Response {
   const body = renderLoadedRoute(loaded, ctx);
-  const documentOptions: Parameters<typeof renderDocument>[0] = {
+  const documentOptions: RenderDocumentOptions = {
     body,
     data: { route: loaded.match.entry.id, params: loaded.match.params, data: loaded.data },
     meta: loaded.meta,
@@ -216,7 +223,7 @@ function renderDocumentForLoadedRoute<C extends Context>(loaded: LoadedRoute<C>,
   };
   const entryClient = loaded.match.entry.clientEntry ?? options.entryClient;
   if (entryClient !== undefined && loaded.match.entry.hasClient !== false) documentOptions.entryClient = entryClient;
-  return renderDocument(documentOptions);
+  return options.stream ? renderDocumentToStream(documentOptions) : renderDocument(documentOptions);
 }
 
 function renderLoadedRoute<C extends Context>(loaded: LoadedRoute<C>, ctx: C): Renderable {
@@ -240,7 +247,7 @@ async function renderNotFound<C extends Context>(routes: RouteEntry<C>[], ctx: C
 function renderHttpBoundary<C extends Context>(match: Match<C>, ctx: C, options: CreatePagesOptions<C>, error: { response: Response }): Promise<Response> | Response {
   const boundary = error.response.status === 404 ? match.entry.notFound ?? match.entry.error : match.entry.error;
   if (!boundary) return error.response;
-  return renderBoundary(match, ctx, ctx.req.raw, error, error.response.status, boundary, match.entry.clientEntry ?? options.entryClient);
+  return renderBoundary(match, ctx, ctx.req.raw, error, error.response.status, boundary, match.entry.clientEntry ?? options.entryClient, options.stream);
 }
 
 function renderErrorBoundary<C extends Context>(match: Match<C>, ctx: C, options: CreatePagesOptions<C>, error: unknown, status: number): Promise<Response> | Response {
@@ -250,7 +257,7 @@ function renderErrorBoundary<C extends Context>(match: Match<C>, ctx: C, options
       : error instanceof Error ? error.stack ?? error.message : String(error);
     return html(`<pre>${escapeText(message)}</pre>`, { status });
   }
-  return renderBoundary(match, ctx, ctx.req.raw, error, status, match.entry.error, match.entry.clientEntry ?? options.entryClient);
+  return renderBoundary(match, ctx, ctx.req.raw, error, status, match.entry.error, match.entry.clientEntry ?? options.entryClient, options.stream);
 }
 
 async function renderBoundary<C extends Context>(
@@ -260,7 +267,8 @@ async function renderBoundary<C extends Context>(
   error: unknown,
   status: number,
   loadBoundary?: () => Promise<RouteModule<C>>,
-  entryClient?: string
+  entryClient?: string,
+  stream = false
 ): Promise<Response> {
   if (!loadBoundary) return new Response(status === 404 ? 'Not Found' : 'Internal Server Error', { status });
   const layoutModules = await Promise.all((match.entry.layouts ?? []).map(load => load()));
@@ -271,10 +279,10 @@ async function renderBoundary<C extends Context>(
   const modules = [...layoutModules, boundary];
   for (const mod of modules) {
     if (mod.meta) metas.push(await mod.meta({ request, params: match.params, ctx, data, error }));
-    if (mod.headers) appendHeaders(headers, new Headers(await mod.headers({ request, params: match.params, ctx, data, error })));
+    if (mod.headers) appendHeadersInit(headers, await mod.headers({ request, params: match.params, ctx, data, error }));
   }
   const body = renderBoundaryRoute(modules, { error, status, data, params: match.params, ctx });
-  const documentOptions: Parameters<typeof renderDocument>[0] = {
+  const documentOptions: RenderDocumentOptions = {
     body,
     data: { route: match.entry.id, params: match.params, data, error: boundaryErrorPayload(error, status) },
     meta: mergeMeta(...metas),
@@ -282,7 +290,7 @@ async function renderBoundary<C extends Context>(
     status
   };
   if (entryClient !== undefined && match.entry.hasClient !== false) documentOptions.entryClient = entryClient;
-  return renderDocument(documentOptions);
+  return stream ? renderDocumentToStream(documentOptions) : renderDocument(documentOptions);
 }
 
 function renderBoundaryRoute<C extends Context>(modules: RouteModule<C>[], props: Record<string, unknown>): Renderable {
@@ -379,11 +387,35 @@ function validateRoutes<C extends Context>(routes: RouteEntry<C>[]): void {
   }
 }
 
-function appendHeaders(target: Headers, source: Headers): void {
-  source.forEach((value, key) => {
+function appendHeadersInit(target: Headers, source: HeadersInit): void {
+  if (source instanceof Headers) {
+    const cookies = getSetCookieValues(source);
+    source.forEach((value, key) => {
+      if (key.toLowerCase() !== 'set-cookie') target.set(key, value);
+    });
+    for (const cookie of cookies) target.append('set-cookie', cookie);
+    return;
+  }
+  if (Array.isArray(source)) {
+    for (const [key, value] of source) appendHeader(target, key, value);
+    return;
+  }
+  for (const [key, value] of Object.entries(source)) {
+    if (Array.isArray(value)) for (const item of value) appendHeader(target, key, item);
+    else appendHeader(target, key, value);
+  }
+}
+
+function appendHeader(target: Headers, key: string, value: string): void {
     if (key.toLowerCase() === 'set-cookie') target.append(key, value);
     else target.set(key, value);
-  });
+}
+
+function getSetCookieValues(headers: Headers): string[] {
+  const getter = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+  if (typeof getter === 'function') return getter.call(headers);
+  const value = headers.get('set-cookie');
+  return value ? [value] : [];
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {

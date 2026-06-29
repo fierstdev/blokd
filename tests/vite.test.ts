@@ -320,6 +320,48 @@ describe('vite route conventions', () => {
     expect((result as { code: string }).code).toContain('import "virtual:blokd/islands";');
   });
 
+  it('infers stable island names for exported island declarations', async () => {
+    const { root } = createRouteFixture('blokd-island-name-transform');
+    const plugin = blokd();
+    await plugin.configResolved?.({ root, command: 'build' });
+    const result = await plugin.transform?.(
+      'import { island } from "blokd"; export const Counter = island(() => <button>Count</button>);',
+      join(root, 'src/islands/Counter.tsx')
+    );
+
+    expect(typeof result).toBe('object');
+    expect((result as { code: string }).code).toContain('island(() => _bd_template("<button>Count</button>")');
+    expect((result as { code: string }).code).toContain('name: "Counter"');
+  });
+
+  it('infers island names for aliased imports and preserves explicit names', async () => {
+    const { root } = createRouteFixture('blokd-island-alias-name-transform');
+    const plugin = blokd();
+    await plugin.configResolved?.({ root, command: 'build' });
+    const result = await plugin.transform?.(
+      'import { island as makeIsland } from "blokd"; export const Editor = makeIsland(() => <input />, { name: "CustomEditor" });',
+      join(root, 'src/islands/Editor.tsx')
+    );
+
+    expect(typeof result).toBe('object');
+    expect((result as { code: string }).code).toContain('name: "CustomEditor"');
+    expect((result as { code: string }).code).not.toContain('name: "Editor"');
+  });
+
+  it('compiles static intrinsic JSX to cached DOM templates', async () => {
+    const { root } = createRouteFixture('blokd-template-transform');
+    const plugin = blokd();
+    await plugin.configResolved?.({ root, command: 'build' });
+    const result = await plugin.transform?.(
+      'export default function Page(){ return <section class="hero"><h1>Hello & welcome</h1><p>Static</p></section>; }',
+      join(root, 'src/routes/index.tsx')
+    );
+
+    expect(typeof result).toBe('object');
+    expect((result as { code: string }).code).toContain('template as _bd_template');
+    expect((result as { code: string }).code).toContain('_bd_template("<section class=\\"hero\\"><h1>Hello &amp; welcome</h1><p>Static</p></section>")');
+  });
+
   it('fails clearly for server-only imports inside dedicated island files', async () => {
     const { root } = createRouteFixture('blokd-island-server-import');
     const file = join(root, 'src/islands/Counter.tsx');

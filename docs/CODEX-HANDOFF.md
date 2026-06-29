@@ -10,9 +10,9 @@ The repository contains:
 - Solid-familiar reactivity: `signal`, `memo`, `effect`, `cleanup`, `batch`, `untrack`.
 - JSX runtime and SSR renderer.
 - Hono page mounting via `createPages()`.
-- Vite plugin that transforms JSX and generates `virtual:blokd/routes`.
+- Vite plugin that transforms JSX, emits cached templates for static intrinsic JSX, infers stable names for exported compiler-assisted islands, and generates `virtual:blokd/routes` plus `virtual:blokd/islands`.
 - Route loaders/actions/meta/headers.
-- Minimal resumable islands: `Island`, `resumable`, `startResumability`.
+- Minimal resumable islands: `Island`, `resumable`, `startResumability`, and compiler-assisted `island()`.
 - Restaurant website example.
 
 ## Immediate validation after package install
@@ -26,14 +26,9 @@ pnpm start:restaurant
 
 ## Priority hardening tasks
 
-1. Add browser integration tests for `startResumability()` using Playwright or happy-dom.
-2. Add client build smoke test for the restaurant app.
-3. Add static route analysis so routes without interactivity omit client entries by default.
-4. Replace runtime JSX IR with compiler-emitted DOM templates.
-5. Add marker-guided hydration for interactive islands that need signal bindings beyond manual event handlers.
-6. Add route manifest tests for pathless groups, catch-alls, layouts, and private files.
-7. Add error boundary conventions (`_error.tsx`, `_404.tsx`).
-8. Add security middleware recipes for CSP, CSRF/spam protection, and secure headers.
+1. Broaden compiler template coverage beyond static intrinsic JSX.
+2. Replace conservative source scanning with compiler-grade static-route analysis.
+3. Add public benchmark fixtures versus Astro, SvelteKit, Remix, Qwik, SolidStart, and Next.
 
 ## Guardrails
 

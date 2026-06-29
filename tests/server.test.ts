@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { createPages, matchRoute, type RouteEntry } from '../packages/blokd/src/hono.js';
 import { For, Show } from '../packages/blokd/src/dom.js';
 import { jsx } from '../packages/blokd/src/jsx-runtime.js';
-import { notFound, redirect, renderToString, safeJsonScript } from '../packages/blokd/src/server.js';
+import { notFound, redirect, renderDocumentToStream, renderToString, safeJsonScript } from '../packages/blokd/src/server.js';
 
 describe('server rendering', () => {
   it('escapes HTML and renders control flow', () => {
@@ -21,6 +21,25 @@ describe('server rendering', () => {
 
   it('safely serializes JSON for script tags', () => {
     expect(safeJsonScript({ x: '</script><script>alert(1)</script>' })).not.toContain('</script>');
+  });
+
+  it('streams full HTML documents with metadata, data, and client entry scripts', async () => {
+    const response = renderDocumentToStream({
+      body: () => jsx('h1', { children: 'Hello <stream>' }),
+      data: { unsafe: '</script>' },
+      meta: { title: 'Streamed' },
+      entryClient: '/assets/client.js',
+      headers: { 'x-mode': 'stream' }
+    });
+
+    expect(response.body).toBeInstanceOf(ReadableStream);
+    expect(response.headers.get('content-type')).toContain('text/html');
+    expect(response.headers.get('x-mode')).toBe('stream');
+    const body = await response.text();
+    expect(body).toContain('<title>Streamed</title>');
+    expect(body).toContain('<h1>Hello &lt;stream&gt;</h1>');
+    expect(body).toContain('\\u003c/script\\u003e');
+    expect(body).toContain('<script type="module" src="/assets/client.js"></script>');
   });
 });
 
@@ -155,4 +174,109 @@ describe('hono pages', () => {
     expect(body).toContain('/assets/blokd-route-index.js');
     expect(body).not.toContain('/assets/client.js');
   });
+
+  it('preserves repeated Set-Cookie headers from route headers across document, data, and HEAD responses', async () => {
+    const routes: RouteEntry[] = [{
+      id: 'cookies',
+      path: '/',
+      layouts: [async () => ({
+        headers: () => [
+          ['Set-Cookie', 'layout=1; Path=/; HttpOnly'],
+          ['x-shared', 'layout']
+        ],
+        default: (props: any) => jsx('main', { children: props.children })
+      })],
+      module: async () => ({
+        loader: () => ({ ok: true }),
+        headers: () => [
+          ['Set-Cookie', 'page=1; Path=/; SameSite=Lax'],
+          ['x-shared', 'page']
+        ],
+        default: () => jsx('h1', { children: 'Cookies' })
+      })
+    }];
+    const app = new Hono();
+    app.route('/', createPages({ routes }));
+
+    const document = await app.request('http://x/');
+    expect(setCookies(document.headers)).toEqual([
+      'layout=1; Path=/; HttpOnly',
+      'page=1; Path=/; SameSite=Lax'
+    ]);
+    expect(document.headers.get('x-shared')).toBe('page');
+    expect(await document.text()).toContain('<h1>Cookies</h1>');
+
+    const data = await app.request('http://x/?__blokd', { headers: { accept: 'application/json' } });
+    expect(setCookies(data.headers)).toEqual([
+      'layout=1; Path=/; HttpOnly',
+      'page=1; Path=/; SameSite=Lax'
+    ]);
+    expect(await data.json()).toMatchObject({ data: { ok: true } });
+
+    const head = await app.request('http://x/', { method: 'HEAD' });
+    expect(setCookies(head.headers)).toEqual([
+      'layout=1; Path=/; HttpOnly',
+      'page=1; Path=/; SameSite=Lax'
+    ]);
+    expect(await head.text()).toBe('');
+  });
+
+  it('preserves repeated Set-Cookie headers when action data re-renders a page', async () => {
+    const routes: RouteEntry[] = [{
+      id: 'form',
+      path: '/form',
+      module: async () => ({
+        action: () => ({ ok: true }),
+        headers: () => new Headers([
+          ['Set-Cookie', 'action=1; Path=/; HttpOnly'],
+          ['Set-Cookie', 'flash=sent; Path=/']
+        ]),
+        default: (props: any) => jsx('p', { children: props.data.ok ? 'Sent' : 'Idle' })
+      })
+    }];
+    const app = new Hono();
+    app.route('/', createPages({ routes }));
+
+    const response = await app.request('http://x/form', { method: 'POST' });
+    expect(setCookies(response.headers)).toEqual([
+      'action=1; Path=/; HttpOnly',
+      'flash=sent; Path=/'
+    ]);
+    expect(await response.text()).toContain('Sent');
+  });
+
+  it('can stream document responses from createPages while keeping HEAD bodyless', async () => {
+    const routes: RouteEntry[] = [{
+      id: 'streamed',
+      path: '/',
+      hasClient: true,
+      module: async () => ({
+        loader: () => ({ message: 'stream me' }),
+        meta: () => ({ title: 'Stream route' }),
+        default: (props: any) => jsx('h1', { children: props.data.message })
+      })
+    }];
+    const app = new Hono();
+    app.route('/', createPages({ routes, entryClient: '/assets/client.js', stream: true }));
+
+    const response = await app.request('http://x/');
+    expect(response.body).toBeInstanceOf(ReadableStream);
+    expect(response.headers.get('content-type')).toContain('text/html');
+    const body = await response.text();
+    expect(body).toContain('<title>Stream route</title>');
+    expect(body).toContain('<h1>stream me</h1>');
+    expect(body).toContain('/assets/client.js');
+
+    const head = await app.request('http://x/', { method: 'HEAD' });
+    expect(head.body).toBeNull();
+    expect(head.headers.get('content-type')).toContain('text/html');
+    expect(await head.text()).toBe('');
+  });
 });
+
+function setCookies(headers: Headers): string[] {
+  const getter = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+  if (typeof getter === 'function') return getter.call(headers);
+  const value = headers.get('set-cookie');
+  return value ? value.split(/,\s*(?=[^;,]+=)/) : [];
+}

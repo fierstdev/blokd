@@ -2,13 +2,13 @@
 
 Blokd is a tiny Hono-native meta-framework for building HTML-first web applications with Solid-familiar signals, JSX, SSR, file routing, native forms, and minimal resumable islands.
 
-Current package version: **0.3.0-beta.0**.
+Current package version: **0.4.0-beta.0**.
 
 Blokd is intentionally a thin layer over vanilla web development:
 
 - **Hono is the server shell.** Blokd mounts pages into a normal Hono app.
 - **Web APIs stay visible.** Route actions and loaders receive real `Request`, `Response`, `URL`, and `FormData` objects.
-- **JSX is ergonomic syntax, not a VDOM contract.** The current runtime is small; the compiler roadmap moves static JSX to direct DOM/template operations.
+- **JSX is ergonomic syntax, not a VDOM contract.** The Vite transform emits cached DOM templates for static intrinsic JSX and falls back to the small runtime for dynamic cases.
 - **Static/server pages can ship no client framework JS.** The Vite route manifest marks non-interactive routes with `hasClient: false`, and `createPages()` omits `entryClient` for those routes.
 - **Resumability is island/event scoped.** Blokd does not serialize an entire app graph; it lazily resumes behavior only where marked.
 
@@ -53,7 +53,7 @@ import { Island, resumable, startResumability } from 'blokd/resume';
 import { startIslands } from 'blokd/client';
 ```
 
-Compiler-assisted islands use `island()` in route-imported island files. With the Vite plugin `clientEntry` option, Blokd injects `virtual:blokd/islands` into the client entry and registers those islands automatically. The plugin can also emit deterministic route-local island entries for builds that use stable entry filenames. Use `island(Component, { name: 'Counter' })` when a production build may minify function names.
+Compiler-assisted islands use `island()` in route-imported island files. With the Vite plugin `clientEntry` option, Blokd injects `virtual:blokd/islands` into the client entry and registers those islands automatically. The plugin can also emit deterministic route-local island entries for builds that use stable entry filenames. Exported island declarations such as `export const Counter = island(() => ...)` receive a stable compiler-inferred name before production minification.
 
 ## Hono server
 
@@ -68,6 +68,12 @@ app.get('/api/health', c => c.json({ ok: true }));
 app.route('/', createPages({ routes, entryClient: '/assets/client.js' }));
 
 export default app;
+```
+
+Document responses can opt into Web Streams:
+
+```ts
+app.route('/', createPages({ routes, entryClient: '/assets/client.js', stream: true }));
 ```
 
 ## Route module

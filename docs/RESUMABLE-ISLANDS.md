@@ -91,10 +91,13 @@ When the Blokd Vite plugin is configured with `clientEntry`, it injects a genera
 
 For production client builds, the Vite plugin also adds deterministic route-local island inputs such as `virtual:blokd/islands/blokd-route-index` and writes matching `clientEntry` values into the route manifest. A route that imports a compiler-assisted island can therefore load `/assets/blokd-route-index.js` instead of the shared fallback client entry.
 
-Production builds should give compiler-assisted islands a stable public name when function names may be minified:
+The Vite transform gives exported island declarations a stable public name before production minification:
 
 ```tsx
-export const Counter = island(CounterView, { name: 'Counter' });
+export const Counter = island(() => {
+  const [count, setCount] = signal(0);
+  return <button onClick={() => setCount(c => c + 1)}>Count: {count()}</button>;
+});
 ```
 
 For custom client build setups, import the generated module directly:
@@ -142,6 +145,27 @@ Unsupported in V1:
 `virtual:blokd/islands` is generated from route-reachable dedicated island files. It imports exported `island()` components, calls `startIslands()`, and registers generated refs like `blokd:island:Counter#click0`. Route-local modules use the same registration code but only include islands reachable from one route.
 
 Route-local entry URLs are deterministic and assume stable client entry file names such as `assets/[name].js`. If a client build uses hashed entry names, keep using the shared `entryClient` fallback until manifest-to-client-asset mapping is added. Lower-level `registerResumable()` and `startResumability()` remain available for explicit `Island`/`on()` handlers and custom allowlists.
+
+## CSP and production refs
+
+Prefer registered refs for production. Registering handlers from the client entry means interaction dispatch does not need to dynamically import the ref URL when the handler is already present:
+
+```ts
+registerResumable('/src/resumables/counter.ts#increment', increment);
+startResumability({
+  allowRef: ref => ref.startsWith('/src/resumables/')
+});
+```
+
+A normal same-origin module-script CSP is enough for this mode:
+
+```txt
+script-src 'self';
+object-src 'none';
+base-uri 'none';
+```
+
+Only use raw dynamic imports when refs intentionally point to built browser chunks, such as `/assets/resumables/counter.js#increment`. In that mode, keep `allowRef()` scoped to the exact public chunk path shape and keep `script-src` limited to trusted script origins.
 
 ## Design constraints
 

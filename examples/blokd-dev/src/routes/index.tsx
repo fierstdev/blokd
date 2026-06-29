@@ -46,7 +46,7 @@ export default function HomePage() {
             <div class="border-b border-base-300 p-6 sm:p-8 lg:border-b-0 lg:border-r lg:p-10">
               <div class="flex flex-wrap items-center gap-3">
                 <Wordmark />
-                <span class="badge badge-primary">0.3.0-beta.0</span>
+                <span class="badge badge-primary">0.4.0-beta.0</span>
                 <span class="badge badge-outline">Cloudflare-ready</span>
               </div>
               <p class="section-kicker mt-10">Web Platform building blocks</p>

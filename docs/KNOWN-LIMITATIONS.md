@@ -2,11 +2,11 @@
 
 ## JSX runtime
 
-The beta uses a small JSX runtime IR. It does not yet emit compiler-optimized DOM templates. This keeps implementation small, but it is not the final performance ceiling.
+The Vite transform emits cached DOM templates for static intrinsic JSX. Dynamic JSX, components, spreads, events, and refs still use the small runtime path. Broader compiler template coverage remains future work.
 
 ## Hydration
 
-`hydrate()` currently delegates to render-style behavior. Blokd's recommended beta model is HTML-first SSR plus resumable islands, not full-app hydration.
+`hydrate()` claims existing SSR nodes and uses `<!--bd-->` markers for dynamic regions. It is intended for focused interactive roots, not a full app hydration framework.
 
 ## Static-route analysis
 
@@ -27,6 +27,8 @@ startResumability({ allowRef: ref => ref.startsWith('/src/resumables/') });
 ```
 
 Raw dynamic imports are still supported for dev setups that serve source files or for apps that intentionally expose importable handler chunks.
+
+Registered refs are the recommended CSP-friendly production mode. If refs intentionally point to importable browser chunks, keep `allowRef()` narrow and keep `script-src` limited to trusted script origins.
 
 ## Browser support
 

@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "blokd": "0.3.0-beta.0",
+    "blokd": "0.4.0-beta.0",
     "hono": ">=4.5 <5"
   },
   "devDependencies": {

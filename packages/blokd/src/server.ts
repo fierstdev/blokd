@@ -1,5 +1,5 @@
 import { runWithEffectsDisabled } from './core.js';
-import { isLazy, type Renderable, type VElement, type VFragment, type Dynamic } from './jsx-runtime.js';
+import { isLazy, type Renderable, type VElement, type VFragment, type Dynamic, type VTemplate } from './jsx-runtime.js';
 import { eventAttributeName, isResumableHandler } from './resume.js';
 
 export type MetaDescriptor = {
@@ -13,6 +13,15 @@ export type MetaDescriptor = {
 };
 
 export type ResponseLike = Response | Renderable | string | number | bigint | boolean | null | undefined;
+
+export type RenderDocumentOptions = {
+  body: Renderable | (() => Renderable);
+  data?: unknown;
+  meta?: MetaDescriptor;
+  status?: number;
+  headers?: HeadersInit;
+  entryClient?: string;
+};
 
 export class HttpError extends Error {
   readonly response: Response;
@@ -86,15 +95,20 @@ function renderValue(value: Renderable): string {
   if (value === null || value === undefined || value === false || value === true) return '';
   if (Array.isArray(value)) return value.map(renderValue).join('');
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') return escapeHtml(value);
-  if (isLazy(value)) return renderValue(value.fn() as Renderable);
+  if (isLazy(value)) return renderDynamicValue(value.fn() as Renderable);
   if (typeof Node !== 'undefined' && value instanceof Node) return escapeHtml(value.textContent ?? '');
   if (typeof value === 'object' && value && 'kind' in value) {
     const kind = (value as { kind: string }).kind;
     if (kind === 'element') return renderElement(value as VElement);
     if (kind === 'fragment') return renderFragment(value as VFragment);
-    if (kind === 'dynamic') return renderValue((value as Dynamic).fn() as Renderable);
+    if (kind === 'dynamic') return renderDynamicValue((value as Dynamic).fn() as Renderable);
+    if (kind === 'template') return (value as VTemplate).html;
   }
   return escapeHtml(String(value));
+}
+
+function renderDynamicValue(value: Renderable): string {
+  return `<!--bd-->${renderValue(value)}<!--/bd-->`;
 }
 
 const voidElements = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
@@ -162,24 +176,47 @@ function renderAttrs(props: Record<string, unknown>): string {
   return out;
 }
 
-export function renderDocument(options: {
-  body: Renderable | (() => Renderable);
-  data?: unknown;
-  meta?: MetaDescriptor;
-  status?: number;
-  headers?: HeadersInit;
-  entryClient?: string;
-}): Response {
+export function renderDocument(options: RenderDocumentOptions): Response {
+  const init = documentResponseInit(options);
+  return html(renderDocumentChunks(options).join(''), init);
+}
+
+export function renderDocumentToStream(options: RenderDocumentOptions): Response {
+  const init = documentResponseInit(options);
+  const headers = new Headers(init.headers);
+  if (!headers.has('content-type')) headers.set('content-type', 'text/html; charset=utf-8');
+  const encoder = new TextEncoder();
+  const chunks = renderDocumentChunks(options);
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    }
+  });
+  return new Response(body, { ...init, headers });
+}
+
+function documentResponseInit(options: RenderDocumentOptions): ResponseInit {
+  const init: ResponseInit = { status: options.status ?? 200 };
+  if (options.headers !== undefined) init.headers = options.headers;
+  return init;
+}
+
+function renderDocumentChunks(options: RenderDocumentOptions): string[] {
   const meta = options.meta ?? {};
   const htmlAttrs = attrsToString(meta.htmlAttrs ?? { lang: 'en' });
   const bodyAttrs = attrsToString(meta.bodyAttrs ?? {});
-  const head = renderHead(meta);
-  const body = renderToString(options.body);
   const data = options.data === undefined ? '' : `<script id="__BLOKD_DATA__" type="application/json">${safeJsonScript(options.data)}</script>`;
   const client = options.entryClient ? `<script type="module" src="${escapeHtml(options.entryClient)}"></script>` : '';
-  const init: ResponseInit = { status: options.status ?? 200 };
-  if (options.headers !== undefined) init.headers = options.headers;
-  return html(`<!doctype html><html${htmlAttrs}><head>${head}</head><body${bodyAttrs}>${body}${data}${client}</body></html>`, init);
+  return [
+    `<!doctype html><html${htmlAttrs}><head>`,
+    renderHead(meta),
+    `</head><body${bodyAttrs}>`,
+    renderToString(options.body),
+    data,
+    client,
+    '</body></html>'
+  ];
 }
 
 export function renderHead(meta: MetaDescriptor): string {

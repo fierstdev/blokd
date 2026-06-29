@@ -1,6 +1,6 @@
 # Blokd Public Beta Readiness
 
-Blokd should be published as a beta, not a stable 1.0 release. The package version is `0.3.0-beta.0` and the public contract is intentionally narrow.
+Blokd should be published as a beta, not a stable 1.0 release. The package version is `0.4.0-beta.0` and the public contract is intentionally narrow.
 
 ## Public beta target
 
@@ -14,16 +14,18 @@ pnpm build:restaurant
 pnpm smoke:restaurant
 pnpm build:site
 pnpm smoke:site
+pnpm smoke:adapters
 pnpm test:browser
 pnpm pack:dry-run
 ```
 
 ## Public beta checklist
 
-- Package version is `0.3.0-beta.0`.
+- Package version is `0.4.0-beta.0`.
 - `blokd`, `blokd/jsx-runtime`, `blokd/client`, `blokd/server`, `blokd/hono`, `blokd/app`, `blokd/components`, `blokd/vite`, and `blokd/resume` resolve from the packed tarball.
 - Restaurant example builds, serves, handles reservation POST redirects, and renders 404 pages.
 - `blokd.dev` example builds as a Cloudflare Workers SSR app with Tailwind and daisyUI styling.
+- Adapter smoke tests exercise built Node/Hono, standard Fetch-style, and Cloudflare Workers-style request handling.
 - Static routes omit the client entry script.
 - Interactive routes include the client entry script only when the manifest marks `hasClient`.
 - Compiler-assisted island files reachable from routes are included in `virtual:blokd/islands` for client-side registration.
@@ -45,8 +47,8 @@ pnpm pack:dry-run
 
 - Large enterprise applications.
 - Full app resumability equivalent to Qwik.
-- Compiler-emitted direct DOM templates.
-- Marker-guided non-destructive hydration.
+- Broad compiler-emitted DOM templates for every JSX shape.
+- Full app hydration equivalent to large SPA frameworks.
 - Advanced cache/revalidation policy.
 - First-party auth, database, image optimization, MDX, or i18n.
 
@@ -70,5 +72,5 @@ Experimental APIs:
 - Vite route manifest shape.
 - Static route client-analysis heuristics.
 - Production resumable-ref rewriting strategy.
-- `hydrate()` behavior.
+- Hydration behavior outside marker-guided focused roots.
 - Runtime-aware component wrappers from `blokd/components`.
