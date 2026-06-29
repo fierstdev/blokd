@@ -200,6 +200,8 @@ export default function Layout(props) {
             <a href="/">Home</a>
             {" · "}
             <a href="/about">About</a>
+            {" · "}
+            <a href="/contact">Contact</a>
           </nav>
         </header>
 
@@ -213,7 +215,7 @@ export default function Layout(props) {
 ### src/routes/index.tsx
 
 ~~~tsx
-import { signal, Island, resumable } from "blokd";
+import { signal, Island, on } from "blokd";
 
 export const meta = () => ({
   title: "Blokd App",
@@ -235,11 +237,11 @@ export default function Home() {
         Count: {count()}
       </button>
 
-      <Island name="demo-island" state={{ message: "Hello from Blokd" }}>
+      <Island name="demo-island" state={{ text: "Hello from Blokd" }}>
         <button
           type="button"
           data-output
-          onClick={resumable("/src/resumables/demo.ts#sayHello")}
+          onClick={on("/src/resumables/demo.ts#show")}
         >
           Run resumable handler
         </button>
@@ -252,10 +254,15 @@ export default function Home() {
 ### src/resumables/demo.ts
 
 ~~~ts
-export function sayHello(event: Event, ctx: any) {
-  const button = event.currentTarget as HTMLButtonElement;
-  button.textContent = ctx.state.message;
-}
+import { defineAction } from "blokd/resume";
+
+type MessageState = {
+  text: string;
+};
+
+export const show = defineAction<MessageState>(({ state, el }) => {
+  el.text(state.text);
+});
 ~~~
 
 ### src/routes/about.tsx
@@ -266,6 +273,12 @@ export const meta = () => ({
   description: "About this minimal Blokd application."
 });
 
+export const runtime = "none";
+
+export const budget = {
+  client: "0kb"
+};
+
 export default function About() {
   return (
     <section>
@@ -275,6 +288,44 @@ export default function About() {
         This route has no event handlers or islands, so Blokd can treat it as a
         static/server-rendered route.
       </p>
+    </section>
+  );
+}
+~~~
+
+### src/routes/contact.tsx
+
+~~~tsx
+export const runtime = "none";
+
+export const budget = {
+  client: "0kb"
+};
+
+export async function action({ request }) {
+  const form = await request.formData();
+  const email = String(form.get("email") ?? "").trim();
+
+  if (!email.includes("@")) {
+    return { ok: false, error: "Enter a valid email." };
+  }
+
+  return { ok: true, email };
+}
+
+export default function Contact(props) {
+  return (
+    <section>
+      <h1>Contact</h1>
+      {props.data?.error ? <p role="alert">{props.data.error}</p> : null}
+      {props.data?.ok ? <p>{`Subscribed ${props.data.email}`}</p> : null}
+      <form method="post">
+        <label>
+          Email
+          <input name="email" type="email" required />
+        </label>
+        <button>Subscribe</button>
+      </form>
     </section>
   );
 }
@@ -314,11 +365,12 @@ export default function ErrorPage(props) {
 
 ## Route behavior
 
-The starter defines two routes:
+The starter defines three routes:
 
 ~~~txt
 src/routes/index.tsx  -> /
 src/routes/about.tsx  -> /about
+src/routes/contact.tsx -> /contact
 ~~~
 
 Special files are not public routes:

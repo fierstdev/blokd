@@ -1,4 +1,4 @@
-import { Island, resumable } from "blokd";
+import { Island, on } from "blokd";
 
 export const meta = () => ({
   title: "Blokd App",
@@ -18,17 +18,16 @@ export default function Home() {
       <Island name="counter" state={{ count: 0 }}>
         <button
           type="button"
-          data-count="0"
-          onClick={resumable("/src/resumables/counter.ts#increment")}
+          onClick={on("/src/resumables/counter.ts#increment")}
         >
           Count: 0
         </button>
       </Island>
 
-      <Island name="demo-island" state={{ message: "Hello from Blokd" }}>
+      <Island name="demo-island" state={{ text: "Hello from Blokd" }}>
         <button
           type="button"
-          onClick={resumable("/src/resumables/demo.ts#sayHello")}
+          onClick={on("/src/resumables/demo.ts#show")}
         >
           Run resumable handler
         </button>

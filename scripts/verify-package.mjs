@@ -8,6 +8,9 @@ const required = [
   'packages/blokd/src/dom.ts',
   'packages/blokd/src/server.ts',
   'packages/blokd/src/hono.ts',
+  'packages/blokd/src/app.ts',
+  'packages/blokd/src/components.ts',
+  'packages/blokd/src/island.ts',
   'packages/blokd/src/vite.ts',
   'packages/blokd/src/client.ts',
   'packages/blokd/src/resume.ts',
@@ -20,7 +23,7 @@ for (const file of required) {
 }
 
 const pkg = JSON.parse(readFileSync(join(root, 'packages/blokd/package.json'), 'utf8'));
-for (const subpath of ['.', './core', './dom', './jsx-runtime', './server', './hono', './vite', './client', './resume']) {
+for (const subpath of ['.', './core', './dom', './jsx-runtime', './server', './hono', './app', './components', './island', './vite', './client', './resume']) {
   if (!pkg.exports[subpath]) throw new Error(`Missing export: ${subpath}`);
 }
 console.log('blokd package structure verified');

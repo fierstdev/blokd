@@ -69,4 +69,90 @@ describe('hono pages', () => {
     const missing = await app.request('http://x/missing');
     expect(missing.status).toBe(404);
   });
+
+  it('re-renders native form action data without client JavaScript', async () => {
+    const routes: RouteEntry[] = [{
+      id: 'contact',
+      path: '/contact',
+      hasClient: false,
+      module: async () => ({
+        action: async ({ request }) => {
+          const form = await request.formData();
+          const email = String(form.get('email') ?? '');
+          if (!email.includes('@')) return { ok: false, error: 'Enter a valid email.' };
+          return { ok: true, email };
+        },
+        default: (props: any) => jsx('section', {
+          children: [
+            props.data?.error ? jsx('p', { role: 'alert', children: props.data.error }) : null,
+            props.data?.ok ? jsx('p', { children: `Subscribed ${props.data.email}` }) : null,
+            jsx('form', {
+              method: 'post',
+              children: [
+                jsx('input', { name: 'email', type: 'email', required: true }),
+                jsx('button', { children: 'Subscribe' })
+              ]
+            })
+          ]
+        })
+      })
+    }];
+    const app = new Hono();
+    app.route('/', createPages({ routes, entryClient: '/assets/client.js' }));
+
+    const invalid = await app.request('http://x/contact', {
+      method: 'POST',
+      body: new URLSearchParams({ email: 'nope' }),
+      headers: { 'content-type': 'application/x-www-form-urlencoded' }
+    });
+    const invalidHtml = await invalid.text();
+    expect(invalid.status).toBe(200);
+    expect(invalidHtml).toContain('Enter a valid email.');
+    expect(invalidHtml).not.toContain('/assets/client.js');
+
+    const valid = await app.request('http://x/contact', {
+      method: 'POST',
+      body: new URLSearchParams({ email: 'person@example.com' }),
+      headers: { 'content-type': 'application/x-www-form-urlencoded' }
+    });
+    expect(await valid.text()).toContain('Subscribed person@example.com');
+  });
+
+  it('returns JSON action objects for data requests', async () => {
+    const routes: RouteEntry[] = [{
+      id: 'contact',
+      path: '/contact',
+      module: async () => ({
+        action: async () => ({ ok: false, error: 'Enter a valid email.' }),
+        default: () => jsx('form', { method: 'post' })
+      })
+    }];
+    const app = new Hono();
+    app.route('/', createPages({ routes }));
+
+    const response = await app.request('http://x/contact?__blokd', {
+      method: 'POST',
+      headers: { accept: 'application/json' }
+    });
+
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(await response.json()).toEqual({ ok: false, error: 'Enter a valid email.' });
+  });
+
+  it('prefers route-local client entries over the global fallback', async () => {
+    const routes: RouteEntry[] = [{
+      id: 'interactive',
+      path: '/',
+      hasClient: true,
+      clientEntry: '/assets/blokd-route-index.js',
+      module: async () => ({ default: () => jsx('h1', { children: 'Interactive' }) })
+    }];
+    const app = new Hono();
+    app.route('/', createPages({ routes, entryClient: '/assets/client.js' }));
+
+    const response = await app.request('http://x/');
+    const body = await response.text();
+    expect(body).toContain('/assets/blokd-route-index.js');
+    expect(body).not.toContain('/assets/client.js');
+  });
 });

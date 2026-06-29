@@ -9,7 +9,10 @@ const budgets = {
   'client.js': 3500,
   'resume.js': 4500,
   'server.js': 8000,
-  'hono.js': 6500
+  'hono.js': 6500,
+  'app.js': 3000,
+  'components.js': 2500,
+  'island.js': 4500
 };
 const dist = join(process.cwd(), 'packages/blokd/dist');
 if (!existsSync(dist)) {

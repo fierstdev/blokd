@@ -55,8 +55,19 @@ export function isLazy(value: unknown): value is Lazy {
   return !!value && typeof value === 'object' && (value as Lazy).__blokdLazy === true;
 }
 
+let virtualJsxDepth = 0;
+
+export function runWithVirtualJsx<T>(fn: () => T): T {
+  virtualJsxDepth++;
+  try {
+    return fn();
+  } finally {
+    virtualJsxDepth--;
+  }
+}
+
 function isBrowser(): boolean {
-  return typeof document !== 'undefined' && typeof Node !== 'undefined';
+  return virtualJsxDepth === 0 && typeof document !== 'undefined' && typeof Node !== 'undefined';
 }
 
 function isEventName(name: string): boolean {

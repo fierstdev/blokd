@@ -29,6 +29,8 @@ JSX authoring
 - `blokd/dom`: DOM render/hydrate helpers.
 - `blokd/server`: SSR, metadata, JSON/HTML responses, redirects, errors.
 - `blokd/hono`: Hono page mounting and route pipeline.
+- `blokd/app`: typed route helpers and native form helpers.
+- `blokd/components`: runtime-aware component wrappers.
 - `blokd/vite`: JSX transform and route manifest plugin.
 - `blokd/client`: browser enhancement entry points.
 - `blokd/resume`: resumable event/island helpers.
@@ -43,6 +45,12 @@ JSX authoring
 6. Route modules render into SSR HTML.
 7. Metadata, headers, serialized data, and optional client entry are injected.
 
+## Route manifest
+
+The Vite plugin maps files in `src/routes` to URL paths. Pathless groups such as `(app)` organize routes without adding URL segments. Dynamic segments use `[id]`, catch-alls use `[...path]`, and `index` maps to its parent path.
+
+Underscore-prefixed files and folders are private to the route tree and are not routable pages. The reserved private files `_layout`, `_404`, and `_error` are still discovered as layout and boundary modules for nearby routes.
+
 ## Resumability model
 
 Blokd implements minimal resumable islands:
@@ -50,7 +58,46 @@ Blokd implements minimal resumable islands:
 - `Island` writes `data-blokd-island` and JSON-safe `data-blokd-state`.
 - `resumable('module#export')` writes event metadata like `data-blokd-oninput` during SSR.
 - `startResumability()` installs a tiny delegated event runtime.
-- On first interaction, Blokd imports the referenced handler and provides a `ResumeContext`.
+- On first interaction, Blokd imports the referenced handler and provides a `ResumableContext`.
 - The handler can read/update JSON island state and manipulate local DOM.
 
 This is intentionally smaller than full Qwik-style resumability. Blokd resumes behavior, not arbitrary closures or a whole serialized component graph.
+
+## Runtime visibility
+
+During Vite builds, Blokd prints a route runtime report with each route's client/runtime status and detected island names. Static routes report `Runtime` as `none`; routes with explicit islands report `islands`; routes with direct client markers report `client`.
+
+Routes may declare `export const runtime = "none";` to fail the build if the route or its layouts include client runtime markers such as `Island`, `resumable`, `on`, `startResumability`, signals, effects, or direct event handlers.
+
+The Vite plugin also exposes `virtual:blokd/islands`, a generated client module for compiler-assisted `island()` exports that are reachable from routes. Configured client entries receive this import automatically. For compiler-assisted island routes, the plugin can also emit deterministic route-local client entries such as `/assets/blokd-route-index.js` and write that URL into the route manifest.
+
+Client budgets can be declared per route:
+
+```ts
+export const budget = {
+  client: "0kb"
+};
+```
+
+They can also be configured globally:
+
+```ts
+blokd({
+  budgets: {
+    "/": "3kb",
+    "/about": "0kb"
+  }
+})
+```
+
+`0kb` catches accidental client behavior from static routes. Nonzero client budgets compare against the measured client build output when it is available.
+
+## Runtime-aware components
+
+`defineComponent()` attaches explicit runtime metadata to a component. `serverComponent()` renders only on the server runtime. `clientComponent()` renders a server fallback during SSR and marks the route as client runtime through Vite analysis. These wrappers are metadata and guardrails, not a global hydration system.
+
+## Native forms
+
+Route `action()` functions run for POST, PUT, PATCH, and DELETE requests. Returning a `Response` or throwing `redirect()` keeps the response direct. Returning a plain object from a normal document form submission re-renders the matched route with that object as `props.data`, so validation errors and success states work without client JavaScript. Data requests still receive the object as JSON.
+
+`blokd/app` includes zero-runtime route helper wrappers and small native form helpers: `defineLoader()`, `defineAction()`, `defineMeta()`, `defineHeaders()`, `defineRoute()`, `readForm()`, `formString()`, and `formStrings()`.

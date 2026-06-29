@@ -367,7 +367,7 @@ export const docs: DocPage[] = [
         examples: [
           {
             filename: 'src/components/Estimate.tsx',
-            code: "import { Island, resumable } from 'blokd';\n\nexport function Estimate() {\n  return (\n    <Island name=\"estimate\" state={{ guests: 12, perGuest: 75 }}>\n      <input\n        type=\"range\"\n        name=\"guests\"\n        value=\"12\"\n        onInput={resumable('/src/resumables/estimate.ts#updateGuests')}\n      />\n      <p data-estimate-output>12 guests</p>\n    </Island>\n  );\n}"
+            code: "import { Island, on } from 'blokd';\n\nexport function Estimate() {\n  return (\n    <Island name=\"estimate\" state={{ guests: 12, perGuest: 75 }}>\n      <input\n        type=\"range\"\n        name=\"guests\"\n        value=\"12\"\n        onInput={on('/src/resumables/estimate.ts#updateGuests')}\n      />\n      <p data-estimate-output>12 guests</p>\n    </Island>\n  );\n}"
           }
         ]
       },
@@ -384,7 +384,7 @@ export const docs: DocPage[] = [
           },
           {
             filename: 'src/resumables/estimate.ts',
-            code: "import type { ResumeContext } from 'blokd/resume';\n\ntype EstimateState = { guests: number; perGuest: number };\n\nexport function updateGuests(event: Event, ctx: ResumeContext<EstimateState>) {\n  const input = event.target as HTMLInputElement;\n  const previous = ctx.state ?? { guests: 12, perGuest: 75 };\n  const next = { ...previous, guests: Number(input.value) };\n  ctx.setState(next);\n  ctx.island?.querySelector('[data-estimate-output]')?.replaceChildren(`${next.guests} guests`);\n}"
+            code: "import { defineAction } from 'blokd/resume';\n\ntype EstimateState = { guests: number; perGuest: number };\n\nexport const updateGuests = defineAction<EstimateState>(({ event, state, island }) => {\n  const input = event.target as HTMLInputElement;\n  state.guests = Number(input.value);\n  island?.querySelector('[data-estimate-output]')?.replaceChildren(`${state.guests} guests`);\n});"
           }
         ]
       },

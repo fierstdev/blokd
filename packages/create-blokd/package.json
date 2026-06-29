@@ -1,6 +1,6 @@
 {
   "name": "create-blokd",
-  "version": "0.1.0-beta.2",
+  "version": "0.3.0-beta.0",
   "description": "Create a new Blokd project.",
   "type": "module",
   "license": "MIT",

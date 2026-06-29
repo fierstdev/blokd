@@ -22,7 +22,7 @@ Usage:
   yarn create blokd my-app
 
 Options:
-  --template <name>       Template to use. Default: minimal
+  --template <name>       Template to use: minimal, forms, dashboard, marketing. Default: minimal
   --install               Install dependencies after creating the project
   --no-install            Do not install dependencies
   --pm <name>             Package manager: pnpm, npm, yarn, bun
@@ -31,6 +31,9 @@ Options:
 Examples:
   pnpm create blokd my-app
   pnpm create blokd my-app --template minimal
+  pnpm create blokd my-app --template forms
+  pnpm create blokd my-app --template dashboard
+  pnpm create blokd my-app --template marketing
   pnpm create blokd my-app --install
 `;
 

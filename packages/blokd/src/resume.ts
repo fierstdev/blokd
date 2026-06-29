@@ -5,24 +5,59 @@ export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue
 
 export type ResumableRef = `${string}#${string}` | string;
 
-export type ResumeContext<TState = JsonValue> = {
-  event: Event;
+export type ResumableContext<
+  TState extends Record<string, unknown> = Record<string, unknown>
+> = {
   element: Element;
   island: Element | null;
-  state: TState | null;
-  setState(next: TState | ((previous: TState | null) => TState)): void;
-  ref: string;
+  state: TState;
 };
 
-export type ResumableEventHandler<TState = JsonValue> = (
+export type ResumableHandler<
+  TState extends Record<string, unknown> = Record<string, unknown>
+> = (
   event: Event,
-  ctx: ResumeContext<TState>
+  ctx: ResumableContext<TState>
 ) => unknown | Promise<unknown>;
 
-export type ResumableHandler<TState = JsonValue> = {
+export type ElementHandle = {
+  attr(name: string): string | null;
+  attr(name: string, value: string | number | boolean | null): void;
+  text(value: string | number | boolean): void;
+  addClass(name: string): void;
+  removeClass(name: string): void;
+  toggleClass(name: string, force?: boolean): void;
+  find(selector: string): Element | null;
+  all(selector: string): Element[];
+};
+
+export type ActionContext<
+  TState extends Record<string, unknown> = Record<string, unknown>
+> = ResumableContext<TState> & {
+  event: Event;
+  el: ElementHandle;
+};
+
+export type ActionHandler<
+  TState extends Record<string, unknown> = Record<string, unknown>
+> = (ctx: ActionContext<TState>) => unknown | Promise<unknown>;
+
+export type ResumeContext<
+  TState extends Record<string, unknown> = Record<string, unknown>
+> = ResumableContext<TState> & {
+  event: Event;
+  ref: string;
+  setState(next: TState | ((previous: TState) => TState)): void;
+};
+
+export type ResumableEventHandler<
+  TState extends Record<string, unknown> = Record<string, unknown>
+> = ResumableHandler<TState>;
+
+export type ResumableBinding<TState extends Record<string, unknown> = Record<string, unknown>> = {
   readonly __blokdResumable: true;
   readonly ref: string;
-  readonly handler?: ResumableEventHandler<TState>;
+  readonly handler?: ResumableHandler<TState>;
 };
 
 export type IslandProps<TState extends JsonValue = JsonValue> = {
@@ -43,8 +78,9 @@ export type StartResumabilityOptions = {
   onError?: (error: unknown, ctx: Omit<ResumeContext, 'state' | 'setState'>) => void;
 };
 
-const registry = new Map<string, ResumableEventHandler>();
-const inflight = new Map<string, Promise<ResumableEventHandler>>();
+const registry = new Map<string, ResumableHandler>();
+const inflight = new Map<string, Promise<ResumableHandler>>();
+const islandStates = new WeakMap<Element, Record<string, unknown>>();
 const DEFAULT_EVENTS = ['click', 'input', 'change', 'submit'] as const;
 type RootTarget = Document | Element;
 type ListenerRecord = { listener: EventListener; count: number };
@@ -54,27 +90,46 @@ type RootResumabilityState = {
 };
 const rootStates = new WeakMap<RootTarget, RootResumabilityState>();
 
-export function resumable<TState = JsonValue>(
+type ExtractRecord<T> = T extends Record<string, unknown> ? T : Record<string, unknown>;
+
+export function resumable<TState = Record<string, unknown>>(
   ref: ResumableRef,
-  handler?: ResumableEventHandler<TState>
-): ResumableHandler<TState> {
+  handler?: ResumableHandler<ExtractRecord<TState>>
+): ResumableBinding<ExtractRecord<TState>> {
   const normalized = String(ref);
   assertValidRef(normalized);
   if (handler) {
-    registry.set(normalized, handler as unknown as ResumableEventHandler);
+    registry.set(normalized, handler as unknown as ResumableHandler);
     return { __blokdResumable: true, ref: normalized, handler };
   }
   return { __blokdResumable: true, ref: normalized };
 }
 
-export function isResumableHandler(value: unknown): value is ResumableHandler {
-  return !!value && typeof value === 'object' && (value as ResumableHandler).__blokdResumable === true;
+export function on(ref: ResumableRef): ResumableBinding {
+  return resumable(ref);
 }
 
-export function registerResumable<TState = JsonValue>(ref: ResumableRef, handler: ResumableEventHandler<TState>): void {
+export function defineAction<TState extends Record<string, unknown> = Record<string, unknown>>(
+  handler: ActionHandler<TState>
+): ResumableHandler<TState> {
+  return (event, ctx) => handler({
+    ...ctx,
+    event,
+    el: createElementHandle(ctx.element)
+  });
+}
+
+export function isResumableHandler(value: unknown): value is ResumableBinding {
+  return !!value && typeof value === 'object' && (value as ResumableBinding).__blokdResumable === true;
+}
+
+export function registerResumable<TState extends Record<string, unknown> = Record<string, unknown>>(
+  ref: ResumableRef,
+  handler: ResumableHandler<TState>
+): void {
   const normalized = String(ref);
   assertValidRef(normalized);
-  registry.set(normalized, handler as unknown as ResumableEventHandler);
+  registry.set(normalized, handler as unknown as ResumableHandler);
 }
 
 export function unregisterResumable(ref: ResumableRef): void {
@@ -165,7 +220,7 @@ export function startResumability(options: StartResumabilityOptions = {}): () =>
 }
 
 async function dispatchResumableEvent(event: Event, options: StartResumabilityOptions): Promise<void> {
-  const match = findResumableElement(event);
+  const match = findResumableElement(event.target, event.type);
   if (!match) return;
 
   const { element, ref } = match;
@@ -180,43 +235,75 @@ async function dispatchResumableEvent(event: Event, options: StartResumabilityOp
     await handler(event, ctx);
   } catch (error) {
     if (options.onError) options.onError(error, baseCtx);
-    else setTimeout(() => { throw error; }, 0);
+    else console.error(error);
   }
 }
 
-function findResumableElement(event: Event): { element: Element; ref: string } | null {
-  const attr = eventAttributeName(event.type);
-  const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
-  for (const item of path) {
-    if (!(item instanceof Element)) continue;
-    const ref = item.getAttribute(attr);
-    if (ref) return { element: item, ref };
-  }
-
-  const target = event.target;
-  if (!(target instanceof Element)) return null;
-  const element = target.closest(`[${attr}]`);
+function findResumableElement(start: EventTarget | null, eventName: string): { element: Element; ref: string } | null {
+  if (!(start instanceof Element)) return null;
+  const attr = eventAttributeName(eventName);
+  const element = start.closest(`[${attr}]`);
   const ref = element?.getAttribute(attr);
   return element && ref ? { element, ref } : null;
 }
 
 function createResumeContext(base: Omit<ResumeContext, 'state' | 'setState'>): ResumeContext {
-  const getStateElement = () => base.island ?? base.element;
-  const read = () => parseState(getStateElement().getAttribute('data-blokd-state'));
+  const state = getIslandState(base.island);
   return {
     ...base,
-    get state() {
-      return read();
-    },
+    state,
     setState(next) {
-      const previous = read();
-      const value = typeof next === 'function' ? (next as (previous: JsonValue | null) => JsonValue)(previous) : next;
-      getStateElement().setAttribute('data-blokd-state', serializeState(value));
+      const value = typeof next === 'function' ? (next as (previous: Record<string, unknown>) => Record<string, unknown>)(state) : next;
+      for (const key of Object.keys(state)) delete state[key];
+      Object.assign(state, value);
+      if (base.island) base.island.setAttribute('data-blokd-state', serializeState(state as JsonValue));
     }
   } as ResumeContext;
 }
 
-async function loadHandler(ref: string): Promise<ResumableEventHandler> {
+function getIslandState(island: Element | null): Record<string, unknown> {
+  if (!island) return {};
+  const existing = islandStates.get(island);
+  if (existing) return existing;
+
+  let state: Record<string, unknown> = {};
+  const parsed = parseState(island.getAttribute('data-blokd-state'));
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    state = parsed as Record<string, unknown>;
+  }
+  islandStates.set(island, state);
+  return state;
+}
+
+function createElementHandle(element: Element): ElementHandle {
+  return {
+    attr: (function attr(name: string, value?: string | number | boolean | null): string | null | void {
+      if (arguments.length === 1) return element.getAttribute(name);
+      if (value === null) element.removeAttribute(name);
+      else element.setAttribute(name, String(value));
+    }) as ElementHandle['attr'],
+    text(value) {
+      element.textContent = String(value);
+    },
+    addClass(name) {
+      element.classList.add(name);
+    },
+    removeClass(name) {
+      element.classList.remove(name);
+    },
+    toggleClass(name, force) {
+      element.classList.toggle(name, force);
+    },
+    find(selector) {
+      return element.querySelector(selector);
+    },
+    all(selector) {
+      return Array.from(element.querySelectorAll(selector));
+    }
+  };
+}
+
+async function loadHandler(ref: string): Promise<ResumableHandler> {
   const registered = registry.get(ref);
   if (registered) return registered;
   const active = inflight.get(ref);
@@ -233,14 +320,20 @@ async function loadHandler(ref: string): Promise<ResumableEventHandler> {
   }
 }
 
-async function importHandler(ref: string): Promise<ResumableEventHandler> {
+async function importHandler(ref: string): Promise<ResumableHandler> {
   const { moduleId, exportName } = parseRef(ref);
-  const mod = await import(/* @vite-ignore */ moduleId) as Record<string, unknown>;
+  let mod: Record<string, unknown>;
+  try {
+    mod = await import(/* @vite-ignore */ moduleId) as Record<string, unknown>;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to import Blokd resumable handler "${ref}": ${detail}`);
+  }
   const handler = mod[exportName];
   if (typeof handler !== 'function') {
-    throw new Error(`Blokd resumable handler ${exportName} was not found in ${moduleId}.`);
+    throw new Error(`Blokd resumable handler "${ref}" was not found. Missing export "${exportName}" in ${moduleId}.`);
   }
-  return handler as ResumableEventHandler;
+  return handler as ResumableHandler;
 }
 
 function parseRef(ref: string): { moduleId: string; exportName: string } {

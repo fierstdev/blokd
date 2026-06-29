@@ -2,7 +2,7 @@
 
 Blokd is a tiny Hono-native meta-framework for building HTML-first web applications with Solid-familiar signals, JSX, SSR, file routing, native forms, and minimal resumable islands.
 
-Current package version: **0.1.0-beta.0**.
+Current package version: **0.3.0-beta.0**.
 
 Blokd is intentionally a thin layer over vanilla web development:
 
@@ -43,12 +43,17 @@ The zip includes a prebuilt `packages/blokd/dist` folder so local workspace inst
 ## Public API
 
 ```ts
-import { signal, memo, effect, cleanup, Show, For } from 'blokd';
+import { signal, memo, effect, cleanup, Show, For, island } from 'blokd';
 import { redirect, notFound, json } from 'blokd/server';
 import { createPages } from 'blokd/hono';
+import { defineAction, readForm, formString } from 'blokd/app';
+import { clientComponent, serverComponent } from 'blokd/components';
 import { blokd } from 'blokd/vite';
 import { Island, resumable, startResumability } from 'blokd/resume';
+import { startIslands } from 'blokd/client';
 ```
+
+Compiler-assisted islands use `island()` in route-imported island files. With the Vite plugin `clientEntry` option, Blokd injects `virtual:blokd/islands` into the client entry and registers those islands automatically. The plugin can also emit deterministic route-local island entries for builds that use stable entry filenames. Use `island(Component, { name: 'Counter' })` when a production build may minify function names.
 
 ## Hono server
 
@@ -98,12 +103,13 @@ Nearest boundary wins. `_404.tsx` handles `notFound()` and unmatched paths. `_er
 
 ```tsx
 import { redirect } from 'blokd/server';
+import { defineAction, formString, readForm } from 'blokd/app';
 
-export const action = async ({ request }) => {
-  const form = await request.formData();
-  await saveReservation(form);
+export const action = defineAction(async ({ request }) => {
+  const form = await readForm(request);
+  await saveReservation({ email: formString(form, 'email', { required: true }) });
   redirect('/thanks');
-};
+});
 
 export default function Reservations() {
   return <form method="post"><input name="email" type="email" required /><button>Reserve</button></form>;
@@ -129,9 +135,9 @@ export function Estimator() {
 
 ```ts
 // src/resumables/estimator.ts
-import type { ResumeContext } from 'blokd/resume';
+import type { ResumableContext } from 'blokd/resume';
 
-export function updateGuests(event: Event, ctx: ResumeContext<{ guests: number; perGuest: number }>) {
+export function updateGuests(event: Event, ctx: ResumableContext<{ guests: number; perGuest: number }>) {
   const input = event.target as HTMLInputElement;
   const next = { ...(ctx.state ?? { guests: 12, perGuest: 75 }), guests: Number(input.value) };
   ctx.setState(next);

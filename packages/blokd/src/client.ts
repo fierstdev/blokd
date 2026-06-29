@@ -1,5 +1,6 @@
 export { render, hydrate } from './jsx-runtime.js';
-export { startResumability, registerResumable, unregisterResumable, resumable, Island } from './resume.js';
+export { startResumability, registerResumable, unregisterResumable, resumable, on, Island } from './resume.js';
+export { registerIsland, startIslands } from './island.js';
 
 export type EnhanceOptions = {
   root?: Document | Element;

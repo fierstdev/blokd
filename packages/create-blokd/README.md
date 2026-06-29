@@ -238,11 +238,21 @@ The goal is a small, explicit, Web Platform-oriented framework.
 
 ## Minimal starter walkthrough
 
-The generated app has two public pages:
+Available templates:
+
+~~~txt
+minimal    Balanced starter with islands, native forms, and static routes
+forms      Native form actions with no client runtime
+dashboard  Route-local islands plus static dashboard pages
+marketing  Static marketing pages with zero client budgets
+~~~
+
+The generated app has three public pages:
 
 ~~~txt
 src/routes/index.tsx  -> /
 src/routes/about.tsx  -> /about
+src/routes/contact.tsx -> /contact
 ~~~
 
 It also has three special route files:
@@ -260,6 +270,7 @@ The root page demonstrates:
 - `resumable`
 
 The about page demonstrates a static server-rendered page with no client interactivity.
+The contact page demonstrates a native POST form action that re-renders success or validation UI without client JavaScript.
 
 ## Hono server entry
 
@@ -328,11 +339,11 @@ The Vite plugin is responsible for:
 The starter includes a minimal resumable island:
 
 ~~~tsx
-<Island name="demo-island" state={{ message: "Hello from Blokd" }}>
+<Island name="demo-island" state={{ text: "Hello from Blokd" }}>
   <button
     type="button"
     data-output
-    onClick={resumable("/src/resumables/demo.ts#sayHello")}
+    onClick={on("/src/resumables/demo.ts#show")}
   >
     Run resumable handler
   </button>
@@ -342,10 +353,15 @@ The starter includes a minimal resumable island:
 The corresponding handler is:
 
 ~~~ts
-export function sayHello(event: Event, ctx: any) {
-  const button = event.currentTarget as HTMLButtonElement;
-  button.textContent = ctx.state.message;
-}
+import { defineAction } from "blokd/resume";
+
+type MessageState = {
+  text: string;
+};
+
+export const show = defineAction<MessageState>(({ state, el }) => {
+  el.text(state.text);
+});
 ~~~
 
 Blokd resumability is island-scoped. It is not full application graph serialization.
@@ -354,11 +370,21 @@ Blokd resumability is island-scoped. It is not full application graph serializat
 
 Blokd can analyze routes to determine whether they need the client entry.
 
-A route with event handlers, signals, effects, `Island`, or `resumable` needs client behavior.
+A route with event handlers, signals, effects, `Island`, `on`, or `resumable` needs client behavior.
 
 A route without client markers can be server-rendered without framework client JavaScript.
 
 This keeps simple pages small by default.
+
+Static starter routes also declare:
+
+~~~ts
+export const budget = {
+  client: "0kb"
+};
+~~~
+
+This fails the build if client behavior is accidentally added to those routes.
 
 ## Package manager behavior
 

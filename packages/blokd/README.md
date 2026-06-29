@@ -2,7 +2,7 @@
 
 Blokd is a tiny Hono-native meta-framework for HTML-first apps with Solid-familiar signals, JSX, SSR, file routing, native forms, and minimal resumable islands.
 
-Version: `0.1.0-beta.0`.
+Version: `0.3.0-beta.0`.
 
 ## Install
 
@@ -14,15 +14,17 @@ pnpm add -D vite typescript
 ## Imports
 
 ```ts
-import { signal, memo, Show, For, Island, resumable } from 'blokd';
+import { signal, memo, Show, For, Island, resumable, island } from 'blokd';
 import { redirect, notFound } from 'blokd/server';
 import { createPages } from 'blokd/hono';
+import { defineAction, readForm, formString } from 'blokd/app';
+import { clientComponent, serverComponent } from 'blokd/components';
 import { blokd } from 'blokd/vite';
-import { registerResumable, startResumability } from 'blokd/client';
+import { registerResumable, startResumability, startIslands } from 'blokd/client';
 ```
 
 ## Beta status
 
 This package is beta software. Use it for small Hono-native SSR apps, business sites, restaurant/local service sites, native forms, and resumable widgets. Read the repository docs before public production use.
 
-Production resumable handlers should be registered from the client entry with `registerResumable()` unless the handler ref points to an importable built module.
+Production resumable handlers should be registered from the client entry with `registerResumable()` unless the handler ref points to an importable built module. Compiler-assisted islands are registered by generated `virtual:blokd/islands` modules. Route-local island entries are deterministic and expect stable client entry filenames such as `assets/[name].js`. Use `island(Component, { name: 'Counter' })` when build tooling may minify function names.

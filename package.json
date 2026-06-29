@@ -14,28 +14,22 @@
     "test:browser": "playwright test",
     "smoke:restaurant": "node scripts/smoke-restaurant-build.mjs",
     "pack:dry-run": "node scripts/publish-dry-run.mjs",
-    "create:smoke": "node packages/create-blokd/bin/create-blokd.js /tmp/blokd-create-smoke --template minimal --no-install"
+    "create:smoke": "node packages/create-blokd/bin/create-blokd.js $(mktemp -d /tmp/blokd-create-smoke-XXXXXX) --template minimal --no-install"
   },
   "devDependencies": {
     "@babel/core": ">=7.24 <8",
     "@hono/node-server": ">=1.13 <3",
+    "@playwright/test": ">=1.44 <2",
     "@types/babel__core": ">=7.20 <8",
     "@types/node": ">=20 <27",
     "hono": ">=4.5 <5",
     "typescript": ">=5.5 <7",
     "vite": ">=6 <9",
-    "vitest": ">=2 <5",
-    "@playwright/test": ">=1.44 <2"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
+    "vitest": ">=2 <5"
   },
   "workspaces": [
     "packages/*",
     "examples/*"
-  ]
+  ],
+  "version": "0.3.0-beta.0"
 }

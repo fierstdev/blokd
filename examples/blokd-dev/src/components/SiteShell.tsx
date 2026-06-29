@@ -65,7 +65,7 @@ export function Footer() {
             <Wordmark />
           </a>
           <p class="mt-4 text-sm leading-6 text-base-content/70">{site.description}</p>
-          <p class="label-caps mt-4">Public beta target: 0.1.0-beta.0</p>
+          <p class="label-caps mt-4">Public beta target: 0.3.0-beta.0</p>
         </aside>
         <For each={groups}>
           {group => (

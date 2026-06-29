@@ -16,6 +16,7 @@ This document defines the production edge cases Blokd must handle before it is t
 - Hono page handler supports `HEAD` with response headers but no response body.
 - Route params use safe decoding; malformed percent-encoding does not crash the router.
 - Duplicate route paths are rejected at manifest generation and page-handler startup.
+- Route manifest generation covers pathless groups, catch-all routes, nested layouts, nearest boundaries, and private underscore-prefixed route files/folders.
 - Resumable refs reject `javascript:`, `data:`, and `blob:` module schemes.
 - Resumability supports `allowRef()` as a production policy hook before dynamic import.
 - Resumability deduplicates in-flight module imports for the same handler ref.

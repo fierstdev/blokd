@@ -11,12 +11,12 @@ For business sites and content-heavy applications, most pages should be HTML and
 ## API
 
 ```tsx
-import { Island, resumable } from 'blokd';
+import { Island, on } from 'blokd';
 
 export function Counter() {
   return (
     <Island name="counter" state={{ count: 0 }}>
-      <button onClick={resumable('/src/resumables/counter.ts#increment')}>0</button>
+      <button onClick={on('/src/resumables/counter.ts#increment')}>0</button>
     </Island>
   );
 }
@@ -45,15 +45,76 @@ startResumability({
 Handler module:
 
 ```ts
-import type { ResumeContext } from 'blokd/resume';
+import { defineAction } from 'blokd/resume';
 
-export function increment(event: Event, ctx: ResumeContext<{ count: number }>) {
-  const previous = ctx.state ?? { count: 0 };
-  const next = { count: previous.count + 1 };
-  ctx.setState(next);
-  ctx.element.textContent = String(next.count);
+type CounterState = {
+  count: number;
+};
+
+export const increment = defineAction<CounterState>(({ state, el }) => {
+  state.count += 1;
+  el.text(String(state.count));
+});
+```
+
+`defineAction()` receives the same island state as the low-level handler plus a small element handle for common DOM updates. `ctx.element` in the low-level API, and `el` in the action API, point to the element that declared the resumable event attribute, even when the event started on a nested child. `ctx.island` is the nearest island root. `ctx.state` is parsed from `data-blokd-state` once per island element and then reused as a mutable object for the lifetime of the page.
+
+## Compiler-assisted islands v1
+
+Blokd also includes an early `island()` authoring layer for dedicated island files. This is the higher-level DX for cases where you do not want to write `Island`, `on()`, handler modules, or manual ref strings by hand.
+
+```tsx
+// src/islands/Counter.tsx
+import { island, signal } from 'blokd';
+
+export const Counter = island(() => {
+  const [count, setCount] = signal(0);
+  return (
+    <button type="button" onClick={() => setCount(c => c + 1)}>
+      Count: {count()}
+    </button>
+  );
+});
+```
+
+Use the island like a normal component from a route:
+
+```tsx
+import { Counter } from '../islands/Counter';
+
+export default function Page() {
+  return <Counter />;
 }
 ```
+
+When the Blokd Vite plugin is configured with `clientEntry`, it injects a generated `virtual:blokd/islands` module into that client entry. The generated module imports route-reachable island exports and calls `startIslands()` for you.
+
+For production client builds, the Vite plugin also adds deterministic route-local island inputs such as `virtual:blokd/islands/blokd-route-index` and writes matching `clientEntry` values into the route manifest. A route that imports a compiler-assisted island can therefore load `/assets/blokd-route-index.js` instead of the shared fallback client entry.
+
+Production builds should give compiler-assisted islands a stable public name when function names may be minified:
+
+```tsx
+export const Counter = island(CounterView, { name: 'Counter' });
+```
+
+For custom client build setups, import the generated module directly:
+
+```ts
+// src/entry-client.ts
+import 'virtual:blokd/islands';
+```
+
+Manual registration is still available for custom setups or prop-bearing islands:
+
+```ts
+import { startIslands } from 'blokd/client';
+import { Counter } from './islands/Counter';
+
+startIslands(Counter);
+startIslands([Counter, { label: 'Guests' }]);
+```
+
+V1 scope is intentionally small: simple `signal()` state, JSON-serializable props, simple event handlers, SSR HTML, serialized island state, generated resumable event refs, and text updates by re-rendering the island boundary. Dedicated island files under `src/islands/` or `*.island.tsx` must not import server-only modules such as `node:fs`, `blokd/server`, or `blokd/hono`.
 
 ## Supported state
 
@@ -75,6 +136,12 @@ Unsupported in V1:
 - Maps/Sets
 - promises
 - Request/Response/Hono context values
+
+## Client entry options
+
+`virtual:blokd/islands` is generated from route-reachable dedicated island files. It imports exported `island()` components, calls `startIslands()`, and registers generated refs like `blokd:island:Counter#click0`. Route-local modules use the same registration code but only include islands reachable from one route.
+
+Route-local entry URLs are deterministic and assume stable client entry file names such as `assets/[name].js`. If a client build uses hashed entry names, keep using the shared `entryClient` fallback until manifest-to-client-asset mapping is added. Lower-level `registerResumable()` and `startResumability()` remain available for explicit `Island`/`on()` handlers and custom allowlists.
 
 ## Design constraints
 

@@ -135,12 +135,14 @@ describe('beta static-route analysis', () => {
     writeFileSync(join(routes, 'signal.tsx'), 'import { signal } from "blokd"; export default function Page(){ const [n]=signal(1); return <p>{n()}</p> }');
     writeFileSync(join(routes, 'memo.tsx'), 'import { memo } from "blokd"; export default function Page(){ const n=memo(() => 1); return <p>{n()}</p> }');
     writeFileSync(join(routes, 'effect.tsx'), 'import { effect } from "blokd"; export default function Page(){ effect(() => undefined); return <p>effect</p> }');
+    writeFileSync(join(routes, 'client-component.tsx'), 'import { clientComponent } from "blokd/components"; const Widget = clientComponent(() => <button>Run</button>); export default function Page(){ return <Widget /> }');
     writeFileSync(join(routes, 'island.tsx'), 'import { Island } from "blokd"; export default function Page(){ return <Island name="x" /> }');
     writeFileSync(join(routes, 'resumable.tsx'), 'import { resumable } from "blokd"; export default function Page(){ return <button onClick={resumable("local#noop")}>Run</button> }');
+    writeFileSync(join(routes, 'on.tsx'), 'import { on } from "blokd"; export default function Page(){ return <button onClick={on("local#noop")}>Run</button> }');
     writeFileSync(join(routes, 'client-entry.tsx'), 'import { startResumability } from "blokd/client"; startResumability(); export default function Page(){ return <p>client</p> }');
 
     const code = makeManifestCode(root, routes);
-    for (const id of ['event', 'signal', 'memo', 'effect', 'island', 'resumable', 'client-entry']) {
+    for (const id of ['event', 'signal', 'memo', 'effect', 'client-component', 'island', 'resumable', 'on', 'client-entry']) {
       expect(code).toMatch(new RegExp(`id: "${id}"[\\s\\S]*?hasClient: true`));
     }
   });

@@ -1,6 +1,6 @@
 # Blokd Public Beta Readiness
 
-Blokd should be published as a beta, not a stable 1.0 release. The package version is `0.1.0-beta.0` and the public contract is intentionally narrow.
+Blokd should be published as a beta, not a stable 1.0 release. The package version is `0.3.0-beta.0` and the public contract is intentionally narrow.
 
 ## Public beta target
 
@@ -20,14 +20,16 @@ pnpm pack:dry-run
 
 ## Public beta checklist
 
-- Package version is `0.1.0-beta.0`.
-- `blokd`, `blokd/jsx-runtime`, `blokd/client`, `blokd/server`, `blokd/hono`, `blokd/vite`, and `blokd/resume` resolve from the packed tarball.
+- Package version is `0.3.0-beta.0`.
+- `blokd`, `blokd/jsx-runtime`, `blokd/client`, `blokd/server`, `blokd/hono`, `blokd/app`, `blokd/components`, `blokd/vite`, and `blokd/resume` resolve from the packed tarball.
 - Restaurant example builds, serves, handles reservation POST redirects, and renders 404 pages.
 - `blokd.dev` example builds as a Cloudflare Workers SSR app with Tailwind and daisyUI styling.
 - Static routes omit the client entry script.
 - Interactive routes include the client entry script only when the manifest marks `hasClient`.
+- Compiler-assisted island files reachable from routes are included in `virtual:blokd/islands` for client-side registration.
+- Compiler-assisted island routes may use deterministic route-local client entries when the client build uses stable entry filenames.
 - Resumable handlers used in production are registered from the client entry or otherwise point to importable built modules.
-- Browser tests pass against the built restaurant app.
+- Browser tests pass against the built restaurant app, including compiler-assisted islands through generated route-local entries.
 - `docs/KNOWN-LIMITATIONS.md` is reviewed before publishing.
 
 ## Supported beta use cases
@@ -60,6 +62,8 @@ Stable APIs intended for beta use:
 - `redirect`, `notFound`, `httpError`, `json`, `html`.
 - `createPages`.
 - `Island`, `resumable`, `startResumability`.
+- Compiler-assisted `island()`, `registerIsland()`, and `startIslands()` are experimental but covered by beta tests.
+- `defineLoader`, `defineAction`, `defineMeta`, `defineHeaders`, `defineRoute`, `readForm`, `formString`, and `formStrings` from `blokd/app`.
 
 Experimental APIs:
 
@@ -67,3 +71,4 @@ Experimental APIs:
 - Static route client-analysis heuristics.
 - Production resumable-ref rewriting strategy.
 - `hydrate()` behavior.
+- Runtime-aware component wrappers from `blokd/components`.

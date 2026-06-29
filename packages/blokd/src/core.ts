@@ -35,6 +35,15 @@ let effectsEnabled = true;
 let flushing = false;
 const queue = new Set<Computation>();
 
+export type SignalObserver = {
+  next<T>(initial: T): {
+    value: T;
+    write?(value: T): void;
+  };
+};
+
+let currentSignalObserver: SignalObserver | null = null;
+
 function createOwner(parent: Owner | null): Owner {
   const owner: Owner = { owner: parent, owned: new Set(), cleanups: [], disposed: false };
   parent?.owned.add(owner);
@@ -133,7 +142,8 @@ function shouldNotify<T>(previous: T, next: T, options?: SignalOptions<T>): bool
 }
 
 export function signal<T>(initial: T, options?: SignalOptions<T>): [Accessor<T>, Setter<T>] {
-  let value = initial;
+  const observed = currentSignalObserver?.next(initial);
+  let value = observed ? observed.value : initial;
   const subscribers: Source = new Set();
 
   const read: Accessor<T> = () => {
@@ -148,6 +158,7 @@ export function signal<T>(initial: T, options?: SignalOptions<T>): [Accessor<T>,
     const nextValue = typeof next === 'function' ? (next as (previous: T) => T)(value) : next;
     if (!shouldNotify(value, nextValue, options)) return value;
     value = nextValue;
+    observed?.write?.(value);
     for (const comp of Array.from(subscribers)) schedule(comp);
     return value;
   }) as Setter<T>;
@@ -226,6 +237,16 @@ export function runWithEffectsDisabled<T>(fn: () => T): T {
     return fn();
   } finally {
     effectsEnabled = previous;
+  }
+}
+
+export function runWithSignalObserver<T>(observer: SignalObserver | null, fn: () => T): T {
+  const previous = currentSignalObserver;
+  currentSignalObserver = observer;
+  try {
+    return fn();
+  } finally {
+    currentSignalObserver = previous;
   }
 }
 

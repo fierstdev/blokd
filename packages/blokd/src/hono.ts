@@ -35,6 +35,7 @@ export type RouteEntry<C extends Context = Context> = {
   error?: () => Promise<RouteModule<C>>;
   notFound?: () => Promise<RouteModule<C>>;
   hasClient?: boolean;
+  clientEntry?: string;
 };
 
 export type CreatePagesOptions<C extends Context = Context> = {
@@ -132,12 +133,44 @@ async function handleAction<C extends Context>(match: Match<C>, ctx: C, options:
     const leaf = await match.entry.module();
     if (!leaf.action) return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
     const result = await leaf.action({ request: ctx.req.raw, params: match.params, ctx });
+    if (isPlainRecord(result)) {
+      if (isDataRequest(ctx.req.raw, options.dataQueryParam ?? '__blokd')) return json(result);
+      return renderActionResult(match, leaf, result, ctx, options);
+    }
     return normalizeActionResult(result);
   } catch (error) {
     if (isHttpError(error)) return error.response;
     if (options.onError) return options.onError(error, ctx);
     throw error;
   }
+}
+
+async function renderActionResult<C extends Context>(
+  match: Match<C>,
+  leaf: RouteModule<C>,
+  data: Record<string, unknown>,
+  ctx: C,
+  options: CreatePagesOptions<C>
+): Promise<Response> {
+  const layoutModules = await Promise.all((match.entry.layouts ?? []).map(load => load()));
+  const modules = [...layoutModules, leaf];
+  const headers = new Headers();
+  const metas: MetaDescriptor[] = [];
+
+  for (const mod of modules) {
+    if (mod.meta) metas.push(await mod.meta({ request: ctx.req.raw, params: match.params, ctx, data }));
+    if (mod.headers) appendHeaders(headers, new Headers(await mod.headers({ request: ctx.req.raw, params: match.params, ctx, data })));
+  }
+
+  const loaded: LoadedRoute<C> = {
+    match,
+    modules,
+    leaf,
+    data,
+    meta: mergeMeta(...metas),
+    headers
+  };
+  return renderDocumentForLoadedRoute(loaded, ctx, options);
 }
 
 function normalizeActionResult(result: ResponseLike | Record<string, unknown>): Response {
@@ -181,7 +214,8 @@ function renderDocumentForLoadedRoute<C extends Context>(loaded: LoadedRoute<C>,
     meta: loaded.meta,
     headers: loaded.headers
   };
-  if (options.entryClient !== undefined && loaded.match.entry.hasClient !== false) documentOptions.entryClient = options.entryClient;
+  const entryClient = loaded.match.entry.clientEntry ?? options.entryClient;
+  if (entryClient !== undefined && loaded.match.entry.hasClient !== false) documentOptions.entryClient = entryClient;
   return renderDocument(documentOptions);
 }
 
@@ -206,7 +240,7 @@ async function renderNotFound<C extends Context>(routes: RouteEntry<C>[], ctx: C
 function renderHttpBoundary<C extends Context>(match: Match<C>, ctx: C, options: CreatePagesOptions<C>, error: { response: Response }): Promise<Response> | Response {
   const boundary = error.response.status === 404 ? match.entry.notFound ?? match.entry.error : match.entry.error;
   if (!boundary) return error.response;
-  return renderBoundary(match, ctx, ctx.req.raw, error, error.response.status, boundary, options.entryClient);
+  return renderBoundary(match, ctx, ctx.req.raw, error, error.response.status, boundary, match.entry.clientEntry ?? options.entryClient);
 }
 
 function renderErrorBoundary<C extends Context>(match: Match<C>, ctx: C, options: CreatePagesOptions<C>, error: unknown, status: number): Promise<Response> | Response {
@@ -216,7 +250,7 @@ function renderErrorBoundary<C extends Context>(match: Match<C>, ctx: C, options
       : error instanceof Error ? error.stack ?? error.message : String(error);
     return html(`<pre>${escapeText(message)}</pre>`, { status });
   }
-  return renderBoundary(match, ctx, ctx.req.raw, error, status, match.entry.error, options.entryClient);
+  return renderBoundary(match, ctx, ctx.req.raw, error, status, match.entry.error, match.entry.clientEntry ?? options.entryClient);
 }
 
 async function renderBoundary<C extends Context>(
